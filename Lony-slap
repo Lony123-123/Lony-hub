@@ -1,0 +1,132 @@
+local Players = game:GetService("Players")
+local lp = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+
+local targetName = "sagboyDAT"
+local enabled = false
+
+-- Xóa GUI cũ nếu có
+if game.CoreGui:FindFirstChild("TeleportGui") then
+    game.CoreGui.TeleportGui:Destroy()
+end
+
+-- Tạo GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = game.CoreGui
+ScreenGui.Name = "TeleportGui"
+
+-- TextBox nhập tên
+local TextBox = Instance.new("TextBox")
+TextBox.Parent = ScreenGui
+TextBox.Size = UDim2.new(0, 160, 0, 40)
+TextBox.Position = UDim2.new(1, -170, 0, 10)
+TextBox.Text = "Nhập tên..."
+TextBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+TextBox.TextScaled = true
+TextBox.BorderSizePixel = 2
+TextBox.ClearTextOnFocus = false
+TextBox.BackgroundTransparency = 0.2
+
+-- Nút tròn bật/tắt Teleport
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Parent = ScreenGui
+ToggleBtn.Size = UDim2.new(0, 40, 0, 40)
+ToggleBtn.Position = UDim2.new(1, -215, 0, 10)
+ToggleBtn.Text = "OFF"
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleBtn.TextScaled = true
+ToggleBtn.BorderSizePixel = 2
+ToggleBtn.BackgroundTransparency = 0.2
+ToggleBtn.ClipsDescendants = true
+ToggleBtn.TextWrapped = true
+
+-- Bo tròn nút
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(1, 0)
+UICorner.Parent = ToggleBtn
+
+-- Frame hiển thị gợi ý tên
+local SuggestFrame = Instance.new("Frame")
+SuggestFrame.Parent = ScreenGui
+SuggestFrame.Size = UDim2.new(0, 200, 0, 100)
+SuggestFrame.Position = UDim2.new(1, -210, 0, 55)
+SuggestFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+SuggestFrame.BorderSizePixel = 2
+SuggestFrame.BackgroundTransparency = 0.3
+SuggestFrame.Visible = false
+
+-- Tìm player theo tên
+local function getTargetPlayer()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player.Name == targetName then
+            return player
+        end
+    end
+    return nil
+end
+
+-- Bật tắt dịch chuyển khi nhấn nút tròn
+ToggleBtn.MouseButton1Click:Connect(function()
+    targetName = TextBox.Text
+    enabled = not enabled
+    if enabled then
+        ToggleBtn.Text = "ON"
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+    else
+        ToggleBtn.Text = "OFF"
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+    end
+end)
+
+-- Gợi ý tên khi gõ TextBox
+TextBox:GetPropertyChangedSignal("Text"):Connect(function()
+    for _, child in pairs(SuggestFrame:GetChildren()) do
+        if child:IsA("TextButton") then child:Destroy() end
+    end
+
+    local inputText = TextBox.Text:lower()
+    if inputText == "" then
+        SuggestFrame.Visible = false
+        return
+    end
+
+    local yOffset = 0
+    local found = false
+    for _, player in pairs(Players:GetPlayers()) do
+        if player.Name:lower():sub(1, #inputText) == inputText then
+            found = true
+            local SuggestBtn = Instance.new("TextButton")
+            SuggestBtn.Parent = SuggestFrame
+            SuggestBtn.Size = UDim2.new(1, 0, 0, 25)
+            SuggestBtn.Position = UDim2.new(0, 0, 0, yOffset)
+            SuggestBtn.Text = player.Name
+            SuggestBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+            SuggestBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            SuggestBtn.TextScaled = true
+            SuggestBtn.BorderSizePixel = 1
+            yOffset = yOffset + 25
+
+            -- Bấm vào tên đề xuất → nhập vào TextBox
+            SuggestBtn.MouseButton1Click:Connect(function()
+                TextBox.Text = player.Name
+                SuggestFrame.Visible = false
+            end)
+        end
+    end
+
+    SuggestFrame.Visible = found
+end)
+
+-- Teleport và xoay mặt khi bật
+RunService.RenderStepped:Connect(function()
+    if enabled then
+        local target = getTargetPlayer()
+        if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+            local targetPos = target.Character.HumanoidRootPart.Position
+            local myPos = targetPos - target.Character.HumanoidRootPart.CFrame.LookVector * 3 + Vector3.new(0, 0.1, 0)
+            lp.Character.HumanoidRootPart.CFrame = CFrame.new(myPos, targetPos)
+        end
+    end
+end)
