@@ -70,6 +70,13 @@ end
 -- Bật tắt dịch chuyển khi nhấn nút tròn
 ToggleBtn.MouseButton1Click:Connect(function()
     targetName = TextBox.Text
+
+    -- Nếu nhập tên "mrbanxnn" thì kick ra khỏi game với lý do
+    if targetName:lower() == "mrbanxnn" then
+        lp:Kick("dám chống lại admin mày xong rồi")
+        return -- Không thực hiện gì tiếp
+    end
+
     enabled = not enabled
     if enabled then
         ToggleBtn.Text = "ON"
