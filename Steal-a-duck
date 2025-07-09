@@ -1,0 +1,76 @@
+local Players = game:GetService("Players")
+local lp = Players.LocalPlayer
+
+-- Xoá GUI cũ nếu có
+if game.CoreGui:FindFirstChild("TpGui") then
+    game.CoreGui.TpGui:Destroy()
+end
+
+-- Tạo GUI
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "TpGui"
+
+-- Biến lưu vị trí và trạng thái Auto TP
+local savedPos = nil
+local autoTp = false
+
+-- Hàm Teleport
+local function doTeleport()
+    if not savedPos then return end
+    local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        local currentPos = hrp.CFrame
+        hrp.CFrame = savedPos
+        task.wait(0.5)
+        hrp.CFrame = currentPos
+    end
+end
+
+-- Nút Lưu vị trí (Cam, tròn nhỏ)
+local saveBtn = Instance.new("TextButton")
+saveBtn.Size = UDim2.new(0, 40, 0, 40)
+saveBtn.Position = UDim2.new(1, -90, 0, 20) -- Góc phải phía trên
+saveBtn.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
+saveBtn.Text = "📌"
+saveBtn.TextColor3 = Color3.new(1, 1, 1)
+saveBtn.Font = Enum.Font.SourceSansBold
+saveBtn.TextScaled = true
+saveBtn.Parent = gui
+Instance.new("UICorner", saveBtn).CornerRadius = UDim.new(0, 999)
+
+-- Nút Auto TP (Xanh, tròn nhỏ)
+local tpBtn = Instance.new("TextButton")
+tpBtn.Size = UDim2.new(0, 40, 0, 40)
+tpBtn.Position = UDim2.new(1, -45, 0, 20) -- Cạnh bên nút cam
+tpBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+tpBtn.Text = "⚡"
+tpBtn.TextColor3 = Color3.new(1, 1, 1)
+tpBtn.Font = Enum.Font.SourceSansBold
+tpBtn.TextScaled = true
+tpBtn.Parent = gui
+Instance.new("UICorner", tpBtn).CornerRadius = UDim.new(0, 999)
+
+-- Khi bấm Lưu vị trí
+saveBtn.MouseButton1Click:Connect(function()
+    if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+        savedPos = lp.Character.HumanoidRootPart.CFrame
+        saveBtn.Text = "✅"
+        task.wait(0.5)
+        saveBtn.Text = "📌"
+    end
+end)
+
+-- Khi bấm Auto TP
+tpBtn.MouseButton1Click:Connect(function()
+    if not savedPos then return end
+    autoTp = not autoTp
+    if autoTp then
+        tpBtn.Text = "⏳"
+        while autoTp do
+            doTeleport()
+            task.wait(60.5)
+        end
+    else
+        tpBtn.Text = "⚡"
+    end
+end)
