@@ -1,0 +1,29 @@
+local player = game.Players.LocalPlayer
+local hrp = player.Character:WaitForChild("HumanoidRootPart")
+
+-- Lưu vị trí ban đầu
+local startPos = hrp.CFrame
+
+-- 3 toạ độ của em (toạ độ thứ 2 sẽ giảm Y đi 2)
+local points = {
+    Vector3.new(-239, 47, 77),
+    Vector3.new(-243, 55, -251), -- giảm Y đi 2
+    Vector3.new(-495, 397, 8)
+}
+
+-- Hàm dịch chuyển
+local function TeleportTo(pos)
+    hrp.CFrame = CFrame.new(pos)
+    warn("Đã dịch chuyển đến: X="..pos.X.." Y="..pos.Y.." Z="..pos.Z)
+end
+
+-- Dịch chuyển tuần tự
+for i = 1, #points do
+    TeleportTo(points[i])
+    wait(1.5)
+end
+
+-- Quay về chỗ cũ
+wait(1)
+hrp.CFrame = startPos
+warn("Quay về vị trí ban đầu: X="..startPos.X.." Y="..startPos.Y.." Z="..startPos.Z)
