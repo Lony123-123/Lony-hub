@@ -1,1 +1,68 @@
+-- Delta GUI: Get Key + Password Gate
 
+local password = "Dangkydimayma"
+local correctScript = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/Lony123-123/Lony-hub/refs/heads/main/Adr1"))()'
+local getKeyURL = "https://link-target.net/1374551/loJp2ryKW3x4"
+
+-- GUI Setup
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+local Frame = Instance.new("Frame", ScreenGui)
+local TextLabel = Instance.new("TextLabel", Frame)
+local TextBox = Instance.new("TextBox", Frame)
+local CheckButton = Instance.new("TextButton", Frame)
+local GetKeyButton = Instance.new("TextButton", Frame)
+
+-- Frame properties
+Frame.Size = UDim2.new(0, 300, 0, 180)
+Frame.Position = UDim2.new(0.5, -150, 0.5, -90)
+Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Frame.BorderSizePixel = 0
+
+-- Label
+TextLabel.Text = "Enter Password:"
+TextLabel.Size = UDim2.new(1, 0, 0, 40)
+TextLabel.BackgroundTransparency = 1
+TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TextLabel.Font = Enum.Font.SourceSansBold
+TextLabel.TextSize = 22
+
+-- TextBox
+TextBox.PlaceholderText = "Type password here..."
+TextBox.Size = UDim2.new(1, -40, 0, 30)
+TextBox.Position = UDim2.new(0, 20, 0, 50)
+TextBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+TextBox.ClearTextOnFocus = false
+TextBox.Font = Enum.Font.SourceSans
+TextBox.TextSize = 18
+
+-- Check Button
+CheckButton.Text = "Unlock"
+CheckButton.Size = UDim2.new(0.4, 0, 0, 30)
+CheckButton.Position = UDim2.new(0.05, 0, 0, 100)
+CheckButton.BackgroundColor3 = Color3.fromRGB(70, 200, 70)
+CheckButton.Font = Enum.Font.SourceSansBold
+CheckButton.TextSize = 18
+
+-- Get Key Button
+GetKeyButton.Text = "Get Key"
+GetKeyButton.Size = UDim2.new(0.4, 0, 0, 30)
+GetKeyButton.Position = UDim2.new(0.55, 0, 0, 100)
+GetKeyButton.BackgroundColor3 = Color3.fromRGB(70, 70, 200)
+GetKeyButton.Font = Enum.Font.SourceSansBold
+GetKeyButton.TextSize = 18
+
+-- Functionality
+CheckButton.MouseButton1Click:Connect(function()
+	if TextBox.Text == password then
+		ScreenGui:Destroy()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/Lony123-123/Lony-hub/refs/heads/main/Adr1"))()
+	else
+		TextBox.Text = "Wrong password!"
+	end
+end)
+
+GetKeyButton.MouseButton1Click:Connect(function()
+	setclipboard(getKeyURL)
+	GetKeyButton.Text = "Link Copied!"
+end)
