@@ -4,3 +4,5 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/Lony123-123/Lony-hub/
 loadstring(game:HttpGet("https://raw.githubusercontent.com/Lony123-123/Lony-hub/refs/heads/main/Esp-name"))()
 -- Chạy script C
 loadstring(game:HttpGet("https://raw.githubusercontent.com/Lony123-123/Lony-hub/refs/heads/main/Get-slap"))()
+-- Chạy script D
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Lony123-123/Lony-hub/refs/heads/main/Delteleport"))()
