@@ -1,6 +1,3 @@
--- Delay 10s trước khi chạy
-task.wait(10)
-
 for _, v in pairs(game:GetDescendants()) do
     if v:IsA("TouchTransmitter") and v.Parent:IsA("Part") then
         local part = v.Parent
