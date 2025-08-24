@@ -1,0 +1,29 @@
+-- 🛡️ Script chỉ chặn thông báo / popup, không xoá UI gameplay
+local CoreGui = game:GetService("CoreGui")
+local StarterGui = game:GetService("StarterGui")
+
+-- Hàm kiểm tra xem UI có phải notify không
+local function isNotification(obj)
+    local name = obj.Name:lower()
+    return name:find("notify") or name:find("notification") or name:find("purchase") or name:find("product")
+end
+
+-- Xoá tất cả notify đang tồn tại
+for _, v in pairs(CoreGui:GetDescendants()) do
+    if (v:IsA("Frame") or v:IsA("TextLabel") or v:IsA("TextButton")) and isNotification(v) then
+        v:Destroy()
+    end
+end
+
+-- Tự động xoá notify mới xuất hiện
+CoreGui.DescendantAdded:Connect(function(v)
+    if (v:IsA("Frame") or v:IsA("TextLabel") or v:IsA("TextButton")) and isNotification(v) then
+        task.wait()
+        v:Destroy()
+    end
+end)
+
+-- Ngăn chặn game gọi StarterGui:SetCore("SendNotification")
+pcall(function()
+    StarterGui:SetCore("SendNotification", function() return end)
+end)
