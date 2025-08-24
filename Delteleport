@@ -4,20 +4,24 @@ task.wait(10)
 for _, v in pairs(game:GetDescendants()) do
     if v:IsA("TouchTransmitter") and v.Parent:IsA("Part") then
         local part = v.Parent
+        local name = part.Name:lower()
 
-        -- Tạo ESP để dễ nhìn
-        local highlight = Instance.new("Highlight")
-        highlight.Parent = part
-        highlight.FillColor = Color3.fromRGB(0, 0, 255) -- xanh
-        highlight.OutlineColor = Color3.fromRGB(255, 255, 0)
-        highlight.FillTransparency = 0.5
+        -- Chỉ xử lý part có tên liên quan tới teleport
+        if string.find(name, "tele") or string.find(name, "portal") or string.find(name, "gate") then
+            -- Tạo ESP để dễ nhìn
+            local highlight = Instance.new("Highlight")
+            highlight.Parent = part
+            highlight.FillColor = Color3.fromRGB(0, 0, 255) -- xanh
+            highlight.OutlineColor = Color3.fromRGB(255, 255, 0)
+            highlight.FillTransparency = 0.5
 
-        -- Vô hiệu hoá luôn TouchTransmitter
-        v:Destroy()
-        print("Đã vô hiệu hoá cửa teleport:", part:GetFullName())
+            -- Vô hiệu hoá TouchTransmitter
+            v:Destroy()
+            print("Đã vô hiệu hoá cửa teleport:", part:GetFullName())
+        end
     end
 end
 
--- Chặn TeleportService
+-- Chặn TeleportService client-side
 local tp = game:GetService("TeleportService")
 tp.Teleport = function() warn("Teleport đã bị chặn!") end
