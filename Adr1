@@ -7,4 +7,4 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/Lony123-123/Lony-hub/
 -- Chạy script D
 loadstring(game:HttpGet("https://raw.githubusercontent.com/Lony123-123/Lony-hub/refs/heads/main/Delteleport"))()
 -- Chạy script D
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Lony123-123/Lony-hub/main/Delebuyshop"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Lony123-123/Lony-hub/refs/heads/main/Delebuyshop"))()
