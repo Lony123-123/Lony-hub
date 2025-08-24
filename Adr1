@@ -1,10 +1,19 @@
--- Chạy script A
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Lony123-123/Lony-hub/refs/heads/main/Slap1"))()
--- Chạy script B
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Lony123-123/Lony-hub/refs/heads/main/Esp-name"))()
--- Chạy script C
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Lony123-123/Lony-hub/refs/heads/main/Get-slap"))()
--- Chạy script D
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Lony123-123/Lony-hub/refs/heads/main/Delteleport"))()
--- Chạy script E
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Lony123-123/Lony-hub/refs/heads/main/Delebuyshop"))()
+-- 🛡️ Main Hub chạy 5 script cùng lúc
+local urls = {
+    "https://raw.githubusercontent.com/Lony123-123/Lony-hub/refs/heads/main/Slap1",       -- Script A
+    "https://raw.githubusercontent.com/Lony123-123/Lony-hub/refs/heads/main/Esp-name",    -- Script B
+    "https://raw.githubusercontent.com/Lony123-123/Lony-hub/refs/heads/main/Get-slap",    -- Script C
+    "https://raw.githubusercontent.com/Lony123-123/Lony-hub/refs/heads/main/Delteleport", -- Script D
+    "https://raw.githubusercontent.com/Lony123-123/Lony-hub/refs/heads/main/Delebuyshop", -- Script E
+}
+
+for _, url in ipairs(urls) do
+    task.spawn(function()
+        local s, err = pcall(function()
+            loadstring(game:HttpGet(url))()
+        end)
+        if not s then
+            warn("Lỗi khi chạy script từ: " .. url .. " | " .. err)
+        end
+    end)
+end
