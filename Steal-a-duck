@@ -1,4 +1,4 @@
--- Lưu danh sách GUI trước khi chạy script
+-- Lưu GUI hiện có trước khi chạy script
 local beforeGUIs = {}
 for _, gui in pairs(game:GetService("CoreGui"):GetChildren()) do
     beforeGUIs[gui] = true
@@ -7,10 +7,10 @@ end
 -- Chạy script gốc
 loadstring(game:HttpGet("https://raw.githubusercontent.com/amdzy088/Immune-slap-tower-/main/Immune%20slap%20tower%20work"))()
 
--- Chờ script tạo menu
-task.wait(1)
+-- Chờ 5 giây cho script tạo menu
+task.wait(5)
 
--- Xoá GUI mới xuất hiện
+-- Xoá GUI mới xuất hiện (chỉ menu của script)
 for _, gui in pairs(game:GetService("CoreGui"):GetChildren()) do
     if not beforeGUIs[gui] then
         gui:Destroy()
