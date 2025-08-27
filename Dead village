@@ -1,0 +1,60 @@
+-- // Tạo GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = game.CoreGui
+
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Size = UDim2.new(0, 120, 0, 40)
+ToggleButton.Position = UDim2.new(1, -130, 0, 10) -- góc phải trên
+ToggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.Text = "Kill Aura: OFF"
+ToggleButton.Parent = ScreenGui
+
+-- // Service
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+
+-- =====================
+--  Auto bật Infinite Jump
+-- =====================
+UserInputService.JumpRequest:Connect(function()
+    if Player.Character and Player.Character:FindFirstChildOfClass("Humanoid") then
+        Player.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+    end
+end)
+
+-- =====================
+--  Auto set WalkSpeed = 30
+-- =====================
+local function setWalkspeed(char)
+    local hum = char:WaitForChild("Humanoid")
+    hum.WalkSpeed = 30
+end
+
+setWalkspeed(Player.Character or Player.CharacterAdded:Wait())
+Player.CharacterAdded:Connect(setWalkspeed)
+
+-- =====================
+--  Kill Aura toggle
+-- =====================
+local auraEnabled = false
+local auraConnection
+
+ToggleButton.MouseButton1Click:Connect(function()
+    auraEnabled = not auraEnabled
+    if auraEnabled then
+        ToggleButton.Text = "Kill Aura: ON"
+        auraConnection = RunService.Heartbeat:Connect(function()
+            for _, npc in pairs(workspace:GetChildren()) do
+                if npc:IsA("Model") and npc.Name == "Zombie" and npc:FindFirstChild("HumanoidRootPart") then
+                    npc.HumanoidRootPart.CFrame = CFrame.new(999999,999999,999999)
+                end
+            end
+        end)
+    else
+        ToggleButton.Text = "Kill Aura: OFF"
+        if auraConnection then auraConnection:Disconnect() end
+    end
+end)
