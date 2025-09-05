@@ -1,19 +1,73 @@
--- 🛡️ Main Hub chạy 5 script cùng lúc
-local urls = {
-    "https://raw.githubusercontent.com/Lony123-123/Lony-hub/refs/heads/main/Slap1",       -- Script A
-    "https://raw.githubusercontent.com/Lony123-123/Lony-hub/refs/heads/main/Esp-name",    -- Script B
-    "https://raw.githubusercontent.com/Lony123-123/Lony-hub/refs/heads/main/Get-slap",    -- Script C
-    "https://raw.githubusercontent.com/Lony123-123/Lony-hub/refs/heads/main/Delteleport", -- Script D
-    "https://raw.githubusercontent.com/Lony123-123/Lony-hub/refs/heads/main/Delebuyshop", -- Script E
+--// Xoá KILLPART và MeshPart (trừ Tool của LocalPlayer) + Tele 3 tọa độ Slap Tower X
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local targetNames = {"KILLPART-5", "KILLPART-100"}
+
+-- Hàm kiểm tra xem obj có nằm trong Tool của LocalPlayer không
+local function isInMyTool(obj)
+    local tool = obj:FindFirstAncestorWhichIsA("Tool")
+    if tool and (tool.Parent == LocalPlayer.Backpack or tool.Parent == LocalPlayer.Character) then
+        return true
+    end
+    return false
+end
+
+-- Hàm xoá đối tượng
+local function checkAndRemove(obj)
+    -- Xoá khối theo tên
+    for _, name in ipairs(targetNames) do
+        if obj.Name == name then
+            obj:Destroy()
+            print("Đã xoá:", name)
+            return
+        end
+    end
+
+    -- Xoá MeshPart (trừ Tool của mình)
+    if obj:IsA("MeshPart") and not isInMyTool(obj) then
+        obj:Destroy()
+        print("Đã xoá MeshPart:", obj:GetFullName())
+    end
+end
+
+-- Quét ban đầu
+for _, obj in pairs(workspace:GetDescendants()) do
+    checkAndRemove(obj)
+end
+
+-- Theo dõi khi có spawn mới
+workspace.DescendantAdded:Connect(checkAndRemove)
+game.DescendantAdded:Connect(checkAndRemove)
+
+--// Teleport 3 tọa độ rồi quay lại chỗ cũ
+local player = LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
+
+-- Lưu toạ độ gốc
+local originalPos = hrp.Position
+
+-- Danh sách toạ độ
+local positions = {
+    Vector3.new(-33.027320861816406, -7.728533744812012, 309.68865966796875),
+    Vector3.new(-59.729793548583984, -9.131898880004883, 60.17180633544922),
+    Vector3.new(-27.315593719482422, 339.25341796875, -174.8297882080078),
 }
 
-for _, url in ipairs(urls) do
-    task.spawn(function()
-        local s, err = pcall(function()
-            loadstring(game:HttpGet(url))()
-        end)
-        if not s then
-            warn("Lỗi khi chạy script từ: " .. url .. " | " .. err)
-        end
-    end)
+-- Hàm teleport
+local function tp(position)
+    if hrp and hrp.Parent then
+        hrp.CFrame = CFrame.new(position)
+    end
 end
+
+-- Chạy lần lượt teleport
+task.spawn(function()
+    for _, pos in ipairs(positions) do
+        tp(pos)
+        task.wait(0.5)
+    end
+    -- Tele về chỗ cũ
+    tp(originalPos)
+end)
