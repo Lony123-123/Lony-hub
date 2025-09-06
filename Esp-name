@@ -1,3 +1,20 @@
+local Players = game:GetService("Players")
+local workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+
+-- ===== Xoá khối Kill brick & damagepart =====
+spawn(function()
+    while true do
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("BasePart") and (obj.Name == "Kill brick" or obj.Name == "damagepart") then
+                obj:Destroy()
+            end
+        end
+        wait(0.1)
+    end
+end)
+
+-- ===== ESP tên người chơi =====
 local function addNameESP(player)
     local function createESP(character)
         local head = character:WaitForChild("Head", 5)
@@ -22,27 +39,25 @@ local function addNameESP(player)
         end
     end
 
-    -- Nếu có sẵn nhân vật thì gắn luôn
     if player.Character then
         createESP(player.Character)
     end
 
-    -- Lắng nghe khi họ respawn
     player.CharacterAdded:Connect(function(character)
         createESP(character)
     end)
 end
 
 -- Áp dụng cho tất cả người chơi trừ mình
-for _, player in pairs(game.Players:GetPlayers()) do
-    if player ~= game.Players.LocalPlayer then
+for _, player in pairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer then
         addNameESP(player)
     end
 end
 
 -- Khi có người mới vào server
-game.Players.PlayerAdded:Connect(function(player)
-    if player ~= game.Players.LocalPlayer then
+Players.PlayerAdded:Connect(function(player)
+    if player ~= LocalPlayer then
         addNameESP(player)
     end
 end)
