@@ -1,0 +1,60 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local hrp = char:WaitForChild("HumanoidRootPart")
+local coords = {
+    Vector3.new(-225.95, 48.50, 76.89),
+    Vector3.new(-246.93, 48.50, -249.50),
+    Vector3.new(-494.95, 398.50, 9.67)
+}
+local delayTime = 0.5
+local originalPos = hrp.CFrame
+for _, pos in ipairs(coords) do
+    hrp.CFrame = CFrame.new(pos)
+    task.wait(delayTime)
+end
+hrp.CFrame = originalPos
+local function addESP(player)
+    if player == LocalPlayer then return end
+    local char = player.Character or player.CharacterAdded:Wait()
+    local head = char:WaitForChild("Head", 5)
+    if head and not head:FindFirstChild("NameESP") then
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "NameESP"
+        billboard.Adornee = head
+        billboard.Size = UDim2.new(0, 100, 0, 20)
+        billboard.AlwaysOnTop = true
+
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.BackgroundTransparency = 1
+        textLabel.Text = player.Name
+        textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        textLabel.TextScaled = false
+        textLabel.Font = Enum.Font.SourceSansBold
+        textLabel.TextSize = 18
+        textLabel.Parent = billboard
+
+        billboard.Parent = head
+    end
+end
+
+for _, plr in pairs(Players:GetPlayers()) do
+    addESP(plr)
+end
+
+Players.PlayerAdded:Connect(addESP)
+local function deleteBadParts(obj)
+    if obj:IsA("BasePart") then
+        local name = obj.Name:lower()
+        if name:find("damagepart") or name:find("kill") or name:find("brick") then
+            obj:Destroy()
+        end
+    end
+end
+
+for _, v in pairs(workspace:GetDescendants()) do
+    deleteBadParts(v)
+end
+
+workspace.DescendantAdded:Connect(deleteBadParts)
