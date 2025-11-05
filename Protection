@@ -1,0 +1,36 @@
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local root = character:WaitForChild("HumanoidRootPart")
+local runService = game:GetService("RunService")
+local debounce = false
+local targetHeight = 30000
+local waitTime = 0.05
+local camera = workspace.CurrentCamera
+local originalPosition = root.Position
+local returning = false
+runService.RenderStepped:Connect(function()
+    local healthPercent = humanoid.Health / humanoid.MaxHealth
+    if healthPercent <= 0.2 and not debounce then
+        debounce = true
+        humanoid.PlatformStand = true
+
+        repeat
+            local camLookVector = camera.CFrame.LookVector
+            root.CFrame = CFrame.new(root.Position.X, targetHeight, root.Position.Z)
+            camera.CFrame = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + camLookVector)
+            wait(waitTime)
+        until root.Position.Y >= targetHeight
+
+        debounce = false
+        returning = true
+    end
+    if healthPercent >= 0.5 and returning then
+        returning = false
+        humanoid.PlatformStand = true
+        local camLookVector = camera.CFrame.LookVector
+        root.CFrame = CFrame.new(originalPosition)
+        camera.CFrame = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + camLookVector)
+        humanoid.PlatformStand = false
+    end
+end)
