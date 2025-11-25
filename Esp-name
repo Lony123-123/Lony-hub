@@ -1,4 +1,4 @@
-local Players = game:GetService("Players")
+=====local Players = game:GetService("Players")
 local workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 
@@ -56,7 +56,7 @@ for _, player in pairs(Players:GetPlayers()) do
 end
 
 -- Khi có người mới vào server
-Players.PlayerAdded:Connect(function(player)
+Players.PlayerAdded:Connect(function(player)=====
     if player ~= LocalPlayer then
         addNameESP(player)
     end
