@@ -1,4 +1,4 @@
-local player = game.Players.LocalPlayer
+=====local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 local root = character:WaitForChild("HumanoidRootPart")
@@ -33,4 +33,4 @@ runService.RenderStepped:Connect(function()
         camera.CFrame = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + camLookVector)
         humanoid.PlatformStand = false
     end
-end)
+end)=====
