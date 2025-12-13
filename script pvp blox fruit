@@ -1,0 +1,99 @@
+--==============================
+-- SCRIPT 1: Tele lên 100m khi bấm G
+--==============================
+task.spawn(function()
+    local player = game.Players.LocalPlayer
+    local UIS = game:GetService("UserInputService")
+
+    local function getChar()
+        local char = player.Character or player.CharacterAdded:Wait()
+        return char, char:WaitForChild("HumanoidRootPart")
+    end
+
+    UIS.InputBegan:Connect(function(input, gp)
+        if gp then return end
+        if input.KeyCode == Enum.KeyCode.G then
+            local char, hrp = getChar()
+
+            hrp.AssemblyLinearVelocity = Vector3.zero
+            hrp.AssemblyAngularVelocity = Vector3.zero
+
+            hrp.CFrame = hrp.CFrame + Vector3.new(0, 100, 0)
+
+            hrp.Anchored = true
+            task.wait(0.1)
+            hrp.Anchored = false
+        end
+    end)
+end)
+
+--==============================
+-- SCRIPT 2: CentuDox Hub
+--==============================
+task.spawn(function()
+    loadstring(game:HttpGet(
+        "https://raw.githubusercontent.com/ParadozCode/CentuDox-Hub-Paradoz-Hub/refs/heads/main/CentuDox.lua",
+        true
+    ))()
+end)
+
+--==============================
+-- SCRIPT 3: Auto bay lên cao khi máu thấp
+--==============================
+task.spawn(function()
+    local player = game.Players.LocalPlayer
+    local char = player.Character or player.CharacterAdded:Wait()
+    local humanoid = char:WaitForChild("Humanoid")
+
+    local originalPos = nil
+    local isUp = false
+
+    while task.wait(0.2) do
+        if not player.Character or not player.Character:FindFirstChild("Humanoid") then
+            char = player.Character or player.CharacterAdded:Wait()
+            humanoid = char:WaitForChild("Humanoid")
+            isUp = false
+            originalPos = nil
+        end
+
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then continue end
+
+        local hp = humanoid.Health
+        local maxHp = humanoid.MaxHealth
+
+        if hp > 0 and hp <= maxHp * 0.4 then
+            if not isUp and not originalPos then
+                originalPos = root.CFrame
+            end
+            isUp = true
+
+            if root.Position.Y < 100000 then
+                root.CFrame = root.CFrame + Vector3.new(0, 100000, 0)
+            end
+
+            humanoid.WalkSpeed = 0
+            humanoid.JumpPower = 0
+        end
+
+        if isUp and hp >= maxHp * 0.7 then
+            if originalPos then
+                root.CFrame = originalPos
+            end
+            humanoid.WalkSpeed = 16
+            humanoid.JumpPower = 50
+            isUp = false
+            originalPos = nil
+        end
+    end
+end)
+
+--==============================
+-- SCRIPT 4: HORNEY script
+--==============================
+task.spawn(function()
+    loadstring(game:HttpGet(
+        "https://raw.githubusercontent.com/khen791/script-khen/refs/heads/main/HORNEY.",
+        true
+    ))()
+end)
