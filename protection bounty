@@ -1,0 +1,85 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+local HP_TRIGGER_LOW = 0.4
+local HP_TRIGGER_HIGH = 0.6
+local TELE_DISTANCE = 1000
+local INTERVAL = 0.1
+local HEIGHT_TRIGGER = 200
+local active = false
+local lastStep = 0
+local humanoid, root
+local originCFrame
+local gui = Instance.new("ScreenGui")
+gui.Parent = player:WaitForChild("PlayerGui")
+gui.IgnoreGuiInset = true
+gui.ResetOnSpawn = false
+gui.Enabled = false
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(1, 0, 1, 0)
+frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+frame.BackgroundTransparency = 0.3
+frame.Parent = gui
+local text = Instance.new("TextLabel")
+text.Size = UDim2.new(1, 0, 1, 0)
+text.Text = "LONY MOD"
+text.TextScaled = true
+text.Font = Enum.Font.GothamBlack
+text.BackgroundTransparency = 1
+text.Parent = frame
+local hue = 0
+RunService.RenderStepped:Connect(function()
+	if gui.Enabled then
+		hue = (hue + 0.005) % 1
+		text.TextColor3 = Color3.fromHSV(hue, 1, 1)
+	end
+end)
+local function setupChar(char)
+	humanoid = char:WaitForChild("Humanoid")
+	root = char:WaitForChild("HumanoidRootPart")
+	originCFrame = root.CFrame
+	active = false
+	lastStep = 0
+end
+if player.Character then
+	setupChar(player.Character)
+end
+player.CharacterAdded:Connect(setupChar)
+RunService.Heartbeat:Connect(function(dt)
+	if not humanoid or humanoid.Health <= 0 or not root then
+		active = false
+		gui.Enabled = false
+		return
+	end
+	local hpPercent = humanoid.Health / humanoid.MaxHealth
+	if hpPercent < HP_TRIGGER_LOW and not active then
+		active = true
+		originCFrame = root.CFrame
+	end
+	if active and hpPercent > HP_TRIGGER_HIGH then
+		active = false
+		root.CFrame = originCFrame
+		lastStep = 0
+		gui.Enabled = false
+		return
+	end
+	if not active then
+		gui.Enabled = false
+		return
+	end
+	lastStep += dt
+	if lastStep >= INTERVAL then
+		lastStep = 0
+		root.CFrame = root.CFrame + Vector3.new(0, TELE_DISTANCE, 0)
+	end
+	if root.Position.Y >= HEIGHT_TRIGGER then
+		gui.Enabled = true
+	else
+		gui.Enabled = false
+	end
+end)
+    if lastStep >= INTERVAL then
+        lastStep = 0
+        root.CFrame = root.CFrame + Vector3.new(0, TELE_DISTANCE, 0)
+    end
+end)
