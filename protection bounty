@@ -78,8 +78,3 @@ RunService.Heartbeat:Connect(function(dt)
 		gui.Enabled = false
 	end
 end)
-    if lastStep >= INTERVAL then
-        lastStep = 0
-        root.CFrame = root.CFrame + Vector3.new(0, TELE_DISTANCE, 0)
-    end
-end)
