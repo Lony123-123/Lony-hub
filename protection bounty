@@ -55,7 +55,7 @@ RunService.Heartbeat:Connect(function(dt)
 		gui.Enabled = false
 		return
 	end
-	local hpPercent = humanoid.Health / humanoid.MaxHealt
+	local hpPercent = humanoid.Health / humanoid.MaxHealth
 	if hpPercent < HP_TRIGGER_LOW and not active then
 		active = true
 		originCFrame = root.CFrame
