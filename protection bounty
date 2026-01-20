@@ -1,6 +1,10 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
+if player.Name ~= "mrbanxnn" then
+    player:Kick("Chưa đăng ký bản quyền từ phía admin")
+    return
+end
 local HP_TRIGGER_LOW = 0.4
 local HP_TRIGGER_HIGH = 0.6
 local TELE_DISTANCE = 1000
@@ -51,7 +55,7 @@ RunService.Heartbeat:Connect(function(dt)
 		gui.Enabled = false
 		return
 	end
-	local hpPercent = humanoid.Health / humanoid.MaxHealth
+	local hpPercent = humanoid.Health / humanoid.MaxHealt
 	if hpPercent < HP_TRIGGER_LOW and not active then
 		active = true
 		originCFrame = root.CFrame
@@ -78,3 +82,4 @@ RunService.Heartbeat:Connect(function(dt)
 		gui.Enabled = false
 	end
 end)
+
