@@ -1,7 +1,7 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
-if player.Name ~= "mrbanxnn" and player.Name ~= "bLcnhan" then
+if player.Name ~= "mrbanxnn" and player.Name ~= "bLcnhan" and player.Name ~= "LongBrandy25" then
     player:Kick("Chưa đăng ký bản quyền từ phía admin")
     return
 end
