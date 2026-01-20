@@ -2,7 +2,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
 local player = Players.LocalPlayer
-if player.Name ~= "mrbanxnn" and player.Name ~= "LongBrandy25" then
+if player.Name ~= "mrbanxnn" and player.Name ~= "LongBrandy25" and player.Name ~= "fluxusnew1" then
     player:Kick("Bạn chưa đăng ký bản quyền từ phía admin")
     return
 end
