@@ -1,8 +1,9 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
 local player = Players.LocalPlayer
 if player.Name ~= "mrbanxnn" and player.Name ~= "LongBrandy25" then
-    player:Kick("Chưa đăng ký bản quyền từ phía admin")
+    player:Kick("Bạn chưa đăng ký bản quyền từ phía admin")
     return
 end
 local HP_TRIGGER_LOW = 0.4
@@ -10,10 +11,13 @@ local HP_TRIGGER_HIGH = 0.6
 local TELE_DISTANCE = 1000
 local INTERVAL = 0.1
 local HEIGHT_TRIGGER = 200
+local GUI_TIME = 3
+local guiTimer = 0
+local guiShown = false
 local active = false
 local lastStep = 0
 local humanoid, root
-local originCFrame
+local originCFrame = nil
 local gui = Instance.new("ScreenGui")
 gui.Parent = player:WaitForChild("PlayerGui")
 gui.IgnoreGuiInset = true
@@ -25,25 +29,54 @@ frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 frame.BackgroundTransparency = 0.3
 frame.Parent = gui
 local text = Instance.new("TextLabel")
-text.Size = UDim2.new(1, 0, 1, 0)
+text.Size = UDim2.new(1, 0, 0.5, 0)
+text.Position = UDim2.new(0, 0, 0.2, 0)
 text.Text = "LONY MOD"
 text.TextScaled = true
 text.Font = Enum.Font.GothamBlack
 text.BackgroundTransparency = 1
 text.Parent = frame
+local subText = Instance.new("TextLabel")
+subText.Size = UDim2.new(1, 0, 0.17, 0)
+subText.Position = UDim2.new(0, 0, 0.6, 0)
+subText.Text = "CỨ ĐỨNG YÊN LÀ ĐƯỢC"
+subText.TextScaled = false
+subText.Font = Enum.Font.GothamBold
+subText.TextColor3 = Color3.fromRGB(255,255,255)
+subText.BackgroundTransparency = 1
+subText.TextWrapped = true
+subText.Parent = frame
 local hue = 0
 RunService.RenderStepped:Connect(function()
 	if gui.Enabled then
 		hue = (hue + 0.005) % 1
-		text.TextColor3 = Color3.fromHSV(hue, 1, 1)
+		local color = Color3.fromHSV(hue, 1, 1)
+		text.TextColor3 = color
+		subText.TextColor3 = color
 	end
 end)
+local function getNearestPlayer()
+	local nearest = nil
+	local shortest = math.huge
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+			local dist = (plr.Character.HumanoidRootPart.Position - root.Position).Magnitude
+			if dist < shortest then
+				shortest = dist
+				nearest = plr
+			end
+		end
+	end
+	return nearest
+end
 local function setupChar(char)
 	humanoid = char:WaitForChild("Humanoid")
 	root = char:WaitForChild("HumanoidRootPart")
-	originCFrame = root.CFrame
 	active = false
 	lastStep = 0
+	guiShown = false
+	originCFrame = nil
+	Camera.CameraSubject = humanoid
 end
 if player.Character then
 	setupChar(player.Character)
@@ -53,18 +86,30 @@ RunService.Heartbeat:Connect(function(dt)
 	if not humanoid or humanoid.Health <= 0 or not root then
 		active = false
 		gui.Enabled = false
+		guiShown = false
 		return
 	end
 	local hpPercent = humanoid.Health / humanoid.MaxHealth
 	if hpPercent < HP_TRIGGER_LOW and not active then
 		active = true
-		originCFrame = root.CFrame
+		if not originCFrame then
+			originCFrame = root.CFrame
+		end
+		local nearest = getNearestPlayer()
+		if nearest and nearest.Character and nearest.Character:FindFirstChild("Humanoid") then
+			Camera.CameraSubject = nearest.Character.Humanoid
+		end
 	end
 	if active and hpPercent > HP_TRIGGER_HIGH then
 		active = false
-		root.CFrame = originCFrame
+		if originCFrame then
+			root.CFrame = originCFrame
+		end
 		lastStep = 0
 		gui.Enabled = false
+		guiShown = false
+		originCFrame = nil
+		Camera.CameraSubject = humanoid
 		return
 	end
 	if not active then
@@ -76,10 +121,15 @@ RunService.Heartbeat:Connect(function(dt)
 		lastStep = 0
 		root.CFrame = root.CFrame + Vector3.new(0, TELE_DISTANCE, 0)
 	end
-	if root.Position.Y >= HEIGHT_TRIGGER then
+	if root.Position.Y >= HEIGHT_TRIGGER and not guiShown then
 		gui.Enabled = true
-	else
-		gui.Enabled = false
+		guiTimer = 0
+		guiShown = true
+	end
+	if gui.Enabled then
+		guiTimer += dt
+		if guiTimer >= GUI_TIME then
+			gui.Enabled = false
+		end
 	end
 end)
-
