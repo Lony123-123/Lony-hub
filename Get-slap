@@ -1,8 +1,8 @@
-local player = game.Players.LocalPlayer
-local hrp = player.Character:WaitForChild("HumanoidRootPart")
+--local player = game.Players.LocalPlayer
+--local hrp = player.Character:WaitForChild("HumanoidRootPart")
 
 -- Lưu vị trí ban đầu
-local startPos = hrp.CFrame
+--local startPos = hrp.CFrame
 
 -- 3 toạ độ của em (toạ độ thứ 2 sẽ giảm Y đi 2)
 local points = {
