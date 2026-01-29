@@ -6,8 +6,8 @@ if player.Name ~= "mrbanxnn" and player.Name ~= "LongBrandy25" and player.Name ~
     player:Kick("Bạn chưa đăng ký bản quyền từ phía admin")
     return
 end
-local HP_TRIGGER_LOW = 1
-local HP_TRIGGER_HIGH = 0
+local HP_TRIGGER_LOW = 0.4
+local HP_TRIGGER_HIGH = 0.6
 local TELE_DISTANCE = 1000
 local INTERVAL = 0.1
 local HEIGHT_TRIGGER = 200
