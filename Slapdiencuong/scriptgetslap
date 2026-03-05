@@ -3,8 +3,10 @@ local delayTime = 0.5
 
 local positions = {
 Vector3.new(-13.99, -68.25, 40.45),
+Vector3.new(-9.51, -70.50, -44.75),
 Vector3.new(117.31, -66.16, 29.42),
 Vector3.new(-178.87, 554.48, 7.08),
+Vector3.new(-40.01, -66.50, -45.05),
 Vector3.new(-40.01, -66.50, -45.05)
 }
 
