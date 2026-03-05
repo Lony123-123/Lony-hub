@@ -1,0 +1,21 @@
+local player = game.Players.LocalPlayer
+local delayTime = 0.5
+
+local positions = {
+Vector3.new(-13.99, -68.25, 40.45),
+Vector3.new(117.31, -66.16, 29.42),
+Vector3.new(-178.87, 554.48, 7.08)
+}
+
+local function teleportTo(pos)
+    local character = player.Character or player.CharacterAdded:Wait()
+    local hrp = character:WaitForChild("HumanoidRootPart")
+    hrp.CFrame = CFrame.new(pos)
+end
+
+for _, pos in ipairs(positions) do
+    teleportTo(pos)
+    task.wait(delayTime)
+end
+
+print("Đã hoàn thành đường tele.")
