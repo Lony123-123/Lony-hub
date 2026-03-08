@@ -110,13 +110,11 @@ RunService.Heartbeat:Connect(function(dt)
 		guiShown = false
 		return
 	end
-	if root.Position.Y > MAX_HEIGHT then
-		return
-	end
 
 	local hpPercent = humanoid.Health / humanoid.MaxHealth
 
-	if hpPercent < HP_TRIGGER_LOW and not active then
+	-- CHỈ CHECK MAX_HEIGHT LÚC BẮT ĐẦU KÍCH HOẠT
+	if hpPercent < HP_TRIGGER_LOW and not active and root.Position.Y <= MAX_HEIGHT then
 		active = true
 
 		if not originCFrame then
