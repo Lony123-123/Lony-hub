@@ -113,8 +113,8 @@ RunService.Heartbeat:Connect(function(dt)
 
 	local hpPercent = humanoid.Health / humanoid.MaxHealth
 
-	-- CHỈ CHECK MAX_HEIGHT LÚC BẮT ĐẦU KÍCH HOẠT
-	if hpPercent < HP_TRIGGER_LOW and not active and root.Position.Y <= MAX_HEIGHT then
+	-- KÍCH HOẠT
+	if hpPercent < HP_TRIGGER_LOW and not active then
 		active = true
 
 		if not originCFrame then
@@ -128,6 +128,7 @@ RunService.Heartbeat:Connect(function(dt)
 		end
 	end
 
+	-- TẮT
 	if active and hpPercent > HP_TRIGGER_HIGH then
 		active = false
 
