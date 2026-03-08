@@ -16,10 +16,10 @@ _G.TeleportMouseConnection = UIS.InputBegan:Connect(function(input)
 
     if input.KeyCode == Enum.KeyCode.R then
         
-        local char = player.Character
+        local char = player.Character or player.CharacterAdded:Wait()
         if not char then return end
         
-        local root = char:FindFirstChild("HumanoidRootPart")
+        local root = char:FindFirstChild("HumanoidRootPart") or char:WaitForChild("HumanoidRootPart")
         local hum = char:FindFirstChildOfClass("Humanoid")
         
         if not root or not hum then return end
