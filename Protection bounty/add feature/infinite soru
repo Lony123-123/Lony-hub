@@ -10,37 +10,36 @@ local MAX_DISTANCE = 200
 
 _G.TeleportMouseConnection = UIS.InputBegan:Connect(function(input)
 
-if UIS:GetFocusedTextBox() then
+    if UIS:GetFocusedTextBox() then
         return
     end
 
     if input.KeyCode == Enum.KeyCode.R then
+        
         local char = player.Character
-        if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
-            
-            local root = char.HumanoidRootPart
-            local hum = char.Humanoid
-            
-            local mousePos = mouse.Hit.Position
-            
-            local direction = mousePos - root.Position
-            local distance = direction.Magnitude
-            
-            if distance > MAX_DISTANCE then
-                direction = direction.Unit * MAX_DISTANCE
-            end
-            
-            local newPos = root.Position + direction
-            
-            root.CFrame = CFrame.new(newPos + Vector3.new(0,3,0))
-            
-            root.Velocity = Vector3.zero
-            root.AssemblyLinearVelocity = Vector3.zero
-            hum.PlatformStand = true
-            
-            task.wait(0.1)
-            
-            hum.PlatformStand = false
+        if not char then return end
+        
+        local root = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        
+        if not root or not hum then return end
+        
+        if not mouse.Hit then return end
+        
+        local mousePos = mouse.Hit.Position
+        
+        local direction = mousePos - root.Position
+        local distance = direction.Magnitude
+        
+        if distance > MAX_DISTANCE then
+            direction = direction.Unit * MAX_DISTANCE
         end
+        
+        local newPos = root.Position + direction
+        
+        root.CFrame = CFrame.new(newPos + Vector3.new(0,3,0))
+        
+        root.AssemblyLinearVelocity = Vector3.zero
+        root.AssemblyAngularVelocity = Vector3.zero
     end
 end)
