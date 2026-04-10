@@ -11,7 +11,7 @@ end
 local HP_TRIGGER_LOW = 0.4
 local HP_TRIGGER_HIGH = 0.6
 local TELE_DISTANCE = 1000
-local INTERVAL = 0.1
+local INTERVAL = 0.001
 local HEIGHT_TRIGGER = 200
 local MAX_HEIGHT = 10000
 local GUI_TIME = 3
