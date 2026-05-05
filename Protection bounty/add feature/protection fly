@@ -2,12 +2,6 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
 local player = Players.LocalPlayer
-
-if player.Name ~= "mrbanxnn" and player.Name ~= "cutosecret" and player.Name ~= "hinatarak26" and player.Name ~= "hpjkywfv" then
-    player:Kick("Bạn chưa đăng ký bản quyền từ phía admin")
-    return
-end
-
 local HP_TRIGGER_LOW = 0.4
 local HP_TRIGGER_HIGH = 0.6
 local TELE_DISTANCE = 1000
