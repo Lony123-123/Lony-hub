@@ -1,0 +1,919 @@
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+local player = Players.LocalPlayer
+local parentGui = (gethui and gethui()) or game:GetService("CoreGui") or player:WaitForChild("PlayerGui")
+for _, name in ipairs({"EleutheriaGUI", "LonyGUI", "LonyFlyGUI", "FlightControl"}) do
+    if parentGui:FindFirstChild(name) then
+        parentGui[name]:Destroy()
+    end
+end
+for _, blurName in ipairs({"EleutheriaBlur", "LonyBlur", "LonyFlyBlur"}) do
+    if Lighting:FindFirstChild(blurName) then
+        Lighting[blurName]:Destroy()
+    end
+end
+local Colors = {
+    BgDark = Color3.fromRGB(14, 19, 24),
+    HeaderBg = Color3.fromRGB(8, 11, 14),
+    MintNeon = Color3.fromRGB(0, 255, 195),
+    TextWhite = Color3.fromRGB(255, 255, 255),
+    TextDim = Color3.fromRGB(170, 185, 180)
+}
+local MenuBlur = Instance.new("BlurEffect")
+MenuBlur.Name = "LonyBlur"
+MenuBlur.Size = 0
+MenuBlur.Parent = Lighting
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "LonyGUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = parentGui
+local function MakeDraggable(dragHandle, targetFrame)
+    local dragging, dragInput, dragStart, startPos
+    dragHandle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = targetFrame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    dragHandle.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            targetFrame.Position = UDim2.new(
+                startPos.X.Scale, startPos.X.Offset + delta.X,
+                startPos.Y.Scale, startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+end
+local FloatBtn = Instance.new("ImageButton")
+FloatBtn.Name = "FloatingButton"
+FloatBtn.Size = UDim2.new(0, 58, 0, 58)
+FloatBtn.Position = UDim2.new(0, 25, 0.45, 0)
+FloatBtn.BackgroundColor3 = Colors.BgDark
+FloatBtn.BackgroundTransparency = 0.25
+FloatBtn.AutoButtonColor = false
+FloatBtn.Parent = ScreenGui
+local FloatCorner = Instance.new("UICorner")
+FloatCorner.CornerRadius = UDim.new(0, 11)
+FloatCorner.Parent = FloatBtn
+local FloatStroke = Instance.new("UIStroke")
+FloatStroke.Color = Colors.MintNeon
+FloatStroke.Thickness = 1.8
+FloatStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+FloatStroke.Parent = FloatBtn
+local InnerBorder = Instance.new("Frame")
+InnerBorder.Size = UDim2.new(1, -4, 1, -4)
+InnerBorder.Position = UDim2.new(0.5, 0, 0.5, 0)
+InnerBorder.AnchorPoint = Vector2.new(0.5, 0.5)
+InnerBorder.BackgroundTransparency = 1
+InnerBorder.Parent = FloatBtn
+local InnerCorner = Instance.new("UICorner")
+InnerCorner.CornerRadius = UDim.new(0, 9)
+InnerCorner.Parent = InnerBorder
+local InnerStroke = Instance.new("UIStroke")
+InnerStroke.Color = Colors.MintNeon
+InnerStroke.Thickness = 0.8
+InnerStroke.Transparency = 0.4
+InnerStroke.Parent = InnerBorder
+local DoveIcon = Instance.new("ImageLabel")
+DoveIcon.Name = "DoveIcon"
+DoveIcon.Size = UDim2.new(0.78, 0, 0.78, 0)
+DoveIcon.Position = UDim2.new(0.5, 0, 0.5, 0)
+DoveIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+DoveIcon.BackgroundTransparency = 1
+DoveIcon.ScaleType = Enum.ScaleType.Fit
+DoveIcon.ImageColor3 = Colors.MintNeon
+DoveIcon.Parent = FloatBtn
+task.spawn(function()
+    local success, assetUrl = pcall(function()
+        if writefile and getcustomasset then
+            local fileName = "lony_dove_icon.png"
+            if not isfile(fileName) then
+                local imgData = game:HttpGet("https://img.icons8.com/ios/250/ffffff/peace-pigeon.png")
+                writefile(fileName, imgData)
+            end
+            return getcustomasset(fileName)
+        end
+    end)
+    if success and assetUrl then
+        DoveIcon.Image = assetUrl
+    else
+        DoveIcon.Image = "rbxassetid://13321848320"
+    end
+end)
+MakeDraggable(FloatBtn, FloatBtn)
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 580, 0, 360)
+MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+MainFrame.BackgroundColor3 = Colors.BgDark
+MainFrame.BackgroundTransparency = 0.35
+MainFrame.BorderSizePixel = 0
+MainFrame.Parent = ScreenGui
+local MainScale = Instance.new("UIScale")
+MainScale.Scale = 1
+MainScale.Parent = MainFrame
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 12)
+MainCorner.Parent = MainFrame
+local MainStroke = Instance.new("UIStroke")
+MainStroke.Color = Colors.MintNeon
+MainStroke.Thickness = 1
+MainStroke.Transparency = 0.1
+MainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+MainStroke.Parent = MainFrame
+local TopBar = Instance.new("Frame")
+TopBar.Size = UDim2.new(1, 0, 0, 34)
+TopBar.BackgroundColor3 = Colors.HeaderBg
+TopBar.BackgroundTransparency = 0.2
+TopBar.BorderSizePixel = 0
+TopBar.Parent = MainFrame
+local TopCorner = Instance.new("UICorner")
+TopCorner.CornerRadius = UDim.new(0, 12)
+TopCorner.Parent = TopBar
+local TopTitle = Instance.new("TextLabel")
+TopTitle.Size = UDim2.new(1, 0, 1, 0)
+TopTitle.BackgroundTransparency = 1
+TopTitle.Text = "Lony 1.0"
+TopTitle.TextColor3 = Colors.TextWhite
+TopTitle.Font = Enum.Font.GothamBold
+TopTitle.TextSize = 14
+TopTitle.Parent = TopBar
+MakeDraggable(TopBar, MainFrame)
+local HeaderLine = Instance.new("Frame")
+HeaderLine.Size = UDim2.new(1, 0, 0, 1)
+HeaderLine.Position = UDim2.new(0, 0, 0, 34)
+HeaderLine.BackgroundColor3 = Colors.MintNeon
+HeaderLine.BackgroundTransparency = 0.25
+HeaderLine.BorderSizePixel = 0
+HeaderLine.ZIndex = 3
+HeaderLine.Parent = MainFrame
+local Sidebar = Instance.new("Frame")
+Sidebar.Size = UDim2.new(0, 115, 1, -35)
+Sidebar.Position = UDim2.new(0, 0, 0, 35)
+Sidebar.BackgroundColor3 = Colors.HeaderBg
+Sidebar.BackgroundTransparency = 0.45
+Sidebar.BorderSizePixel = 0
+Sidebar.Parent = MainFrame
+local SidebarCorner = Instance.new("UICorner")
+SidebarCorner.CornerRadius = UDim.new(0, 12)
+SidebarCorner.Parent = Sidebar
+local SidebarLayout = Instance.new("UIListLayout")
+SidebarLayout.Padding = UDim.new(0, 12)
+SidebarLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+SidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
+SidebarLayout.Parent = Sidebar
+local SidebarPadding = Instance.new("UIPadding")
+SidebarPadding.PaddingTop = UDim.new(0, 18)
+SidebarPadding.Parent = Sidebar
+local VerticalLine = Instance.new("Frame")
+VerticalLine.Size = UDim2.new(0, 1, 1, -35)
+VerticalLine.Position = UDim2.new(0, 115, 0, 35)
+VerticalLine.BackgroundColor3 = Colors.MintNeon
+VerticalLine.BackgroundTransparency = 0.25
+VerticalLine.BorderSizePixel = 0
+VerticalLine.ZIndex = 3
+VerticalLine.Parent = MainFrame
+local ContentArea = Instance.new("Frame")
+ContentArea.Size = UDim2.new(1, -116, 1, -35)
+ContentArea.Position = UDim2.new(0, 116, 0, 35)
+ContentArea.BackgroundTransparency = 1
+ContentArea.Parent = MainFrame
+local Tabs = {}
+local TabButtons = {}
+local function SwitchTab(tabName)
+    for name, page in pairs(Tabs) do
+        page.Visible = (name == tabName)
+    end
+    for name, btn in pairs(TabButtons) do
+        if name == tabName then
+            TweenService:Create(btn, TweenInfo.new(0.18, Enum.EasingStyle.Quad), {
+                BackgroundTransparency = 0,
+                BackgroundColor3 = Colors.MintNeon,
+                TextColor3 = Colors.HeaderBg
+            }):Play()
+        else
+            TweenService:Create(btn, TweenInfo.new(0.18, Enum.EasingStyle.Quad), {
+                BackgroundTransparency = 1,
+                TextColor3 = Colors.TextWhite
+            }):Play()
+        end
+    end
+end
+local function CreateTab(name, isDefault)
+    local Btn = Instance.new("TextButton")
+    Btn.Size = UDim2.new(0, 82, 0, 28)
+    Btn.BackgroundColor3 = Colors.MintNeon
+    Btn.BackgroundTransparency = isDefault and 0 or 1
+    Btn.Text = name
+    Btn.TextColor3 = isDefault and Colors.HeaderBg or Colors.TextWhite
+    Btn.Font = Enum.Font.GothamBold
+    Btn.TextSize = 13
+    Btn.AutoButtonColor = false
+    Btn.Parent = Sidebar
+    local BtnCorner = Instance.new("UICorner")
+    BtnCorner.CornerRadius = UDim.new(0, 6)
+    BtnCorner.Parent = Btn
+    local PageWrapper = Instance.new("Frame")
+    PageWrapper.Size = UDim2.new(1, -24, 1, -24)
+    PageWrapper.Position = UDim2.fromOffset(12, 12)
+    PageWrapper.BackgroundTransparency = 1
+    PageWrapper.Visible = isDefault or false
+    PageWrapper.Parent = ContentArea
+    Instance.new("UICorner", PageWrapper).CornerRadius = UDim.new(0, 8)
+    local WrapperStroke = Instance.new("UIStroke")
+    WrapperStroke.Color = Colors.MintNeon
+    WrapperStroke.Thickness = 1
+    WrapperStroke.Transparency = 0.35
+    WrapperStroke.Parent = PageWrapper
+    local Page = Instance.new("ScrollingFrame")
+    Page.Size = UDim2.new(1, -20, 1, -16)
+    Page.Position = UDim2.fromOffset(10, 8)
+    Page.BackgroundTransparency = 1
+    Page.BorderSizePixel = 0
+    Page.ScrollBarThickness = 2
+    Page.ScrollBarImageColor3 = Colors.MintNeon
+    Page.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    Page.CanvasSize = UDim2.new(0, 0, 0, 0)
+    Page.Parent = PageWrapper
+    local PageLayout = Instance.new("UIListLayout")
+    PageLayout.Padding = UDim.new(0, 8)
+    PageLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    PageLayout.Parent = Page
+    Tabs[name] = PageWrapper
+    TabButtons[name] = Btn
+    Btn.MouseButton1Click:Connect(function()
+        SwitchTab(name)
+    end)
+    return Page
+end
+local TabMain = CreateTab("Main", true)
+local function CreateMenuCheckbox(parentPage, labelText, order, onToggle)
+    local Row = Instance.new("Frame")
+    Row.Size = UDim2.new(1, 0, 0, 24)
+    Row.BackgroundTransparency = 1
+    Row.LayoutOrder = order
+    Row.Parent = parentPage
+    local BoxBtn = Instance.new("TextButton")
+    BoxBtn.Size = UDim2.fromOffset(22, 22)
+    BoxBtn.Position = UDim2.new(0, 0, 0.5, 0)
+    BoxBtn.AnchorPoint = Vector2.new(0, 0.5)
+    BoxBtn.BackgroundColor3 = Colors.HeaderBg
+    BoxBtn.BackgroundTransparency = 0.2
+    BoxBtn.Text = ""
+    BoxBtn.AutoButtonColor = false
+    BoxBtn.Parent = Row
+    Instance.new("UICorner", BoxBtn).CornerRadius = UDim.new(0, 5)
+    local BoxStroke = Instance.new("UIStroke")
+    BoxStroke.Color = Colors.MintNeon
+    BoxStroke.Thickness = 1.3
+    BoxStroke.Parent = BoxBtn
+    local CheckMark = Instance.new("TextLabel")
+    CheckMark.Size = UDim2.new(1, 0, 1, 0)
+    CheckMark.BackgroundTransparency = 1
+    CheckMark.Text = "✓"
+    CheckMark.TextColor3 = Colors.MintNeon
+    CheckMark.Font = Enum.Font.GothamBold
+    CheckMark.TextSize = 15
+    CheckMark.Visible = false
+    CheckMark.Parent = BoxBtn
+    local Label = Instance.new("TextLabel")
+    Label.Size = UDim2.new(1, -32, 1, 0)
+    Label.Position = UDim2.fromOffset(30, 0)
+    Label.BackgroundTransparency = 1
+    Label.Text = labelText
+    Label.TextColor3 = Colors.TextWhite
+    Label.Font = Enum.Font.GothamBold
+    Label.TextSize = 12
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.Parent = Row
+    local ClickArea = Instance.new("TextButton")
+    ClickArea.Size = UDim2.new(1, 0, 1, 0)
+    ClickArea.BackgroundTransparency = 1
+    ClickArea.Text = ""
+    ClickArea.Parent = Row
+    local state = false
+    local function setVisual(newState)
+        state = newState
+        CheckMark.Visible = state
+        TweenService:Create(BoxBtn, TweenInfo.new(0.15), {
+            BackgroundColor3 = state and Color3.fromRGB(0, 65, 50) or Colors.HeaderBg
+        }):Play()
+    end
+    ClickArea.MouseButton1Click:Connect(function()
+        setVisual(not state)
+        onToggle(state)
+    end)
+    return setVisual
+end
+local FlyGuiCleanup = nil
+local function StopFlyGuiSystem()
+    if FlyGuiCleanup then
+        FlyGuiCleanup()
+        FlyGuiCleanup = nil
+    end
+end
+local function StartFlyGuiSystem()
+    StopFlyGuiSystem()
+    local MIN_SPEED = 10
+    local MAX_SPEED = 1000
+    local speed = 170
+    local enabled = false
+    local flying = false
+    local noclip = false
+    local flyConnection
+    local clipConnection
+    local savedCollisions = {}
+    local flyAttachment
+    local linearVel
+    local alignOri
+    local connections = {}
+    local function trackConn(conn)
+        table.insert(connections, conn)
+        return conn
+    end
+    local function character()
+        return player.Character
+    end
+    local function humanoid()
+        local c = character()
+        return c and c:FindFirstChildOfClass("Humanoid")
+    end
+    local function root()
+        local c = character()
+        return c and c:FindFirstChild("HumanoidRootPart")
+    end
+    local FlyBlur = Instance.new("BlurEffect")
+    FlyBlur.Name = "LonyFlyBlur"
+    FlyBlur.Size = 0
+    FlyBlur.Parent = Lighting
+    local FlyScreenGui = Instance.new("ScreenGui")
+    FlyScreenGui.Name = "LonyFlyGUI"
+    FlyScreenGui.ResetOnSpawn = false
+    FlyScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    FlyScreenGui.Parent = parentGui
+    local function MakeFlyDraggable(dragHandle, targetFrame)
+        local dragging, dragInput, dragStart, startPos
+        trackConn(dragHandle.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = true
+                dragStart = input.Position
+                startPos = targetFrame.Position
+                input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then
+                        dragging = false
+                    end
+                end)
+            end
+        end))
+        trackConn(dragHandle.InputChanged:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                dragInput = input
+            end
+        end))
+        trackConn(UserInputService.InputChanged:Connect(function(input)
+            if input == dragInput and dragging then
+                local delta = input.Position - dragStart
+                targetFrame.Position = UDim2.new(
+                    startPos.X.Scale, startPos.X.Offset + delta.X,
+                    startPos.Y.Scale, startPos.Y.Offset + delta.Y
+                )
+            end
+        end))
+    end
+
+    local FlyFloatBtn = Instance.new("ImageButton")
+    FlyFloatBtn.Name = "FloatingButton"
+    FlyFloatBtn.Size = UDim2.new(0, 50, 0, 50)
+    FlyFloatBtn.Position = UDim2.new(0, 25, 0.58, 0)
+    FlyFloatBtn.BackgroundColor3 = Colors.BgDark
+    FlyFloatBtn.BackgroundTransparency = 0.25
+    FlyFloatBtn.AutoButtonColor = false
+    FlyFloatBtn.Parent = FlyScreenGui
+    Instance.new("UICorner", FlyFloatBtn).CornerRadius = UDim.new(0, 10)
+    local FlyFloatStroke = Instance.new("UIStroke")
+    FlyFloatStroke.Color = Colors.MintNeon
+    FlyFloatStroke.Thickness = 1.5
+    FlyFloatStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    FlyFloatStroke.Parent = FlyFloatBtn
+    local FlyInnerBorder = Instance.new("Frame")
+    FlyInnerBorder.Size = UDim2.new(1, -4, 1, -4)
+    FlyInnerBorder.Position = UDim2.new(0.5, 0, 0.5, 0)
+    FlyInnerBorder.AnchorPoint = Vector2.new(0.5, 0.5)
+    FlyInnerBorder.BackgroundTransparency = 1
+    FlyInnerBorder.Parent = FlyFloatBtn
+    Instance.new("UICorner", FlyInnerBorder).CornerRadius = UDim.new(0, 8)
+    local FlyInnerStroke = Instance.new("UIStroke")
+    FlyInnerStroke.Color = Colors.MintNeon
+    FlyInnerStroke.Thickness = 0.8
+    FlyInnerStroke.Transparency = 0.4
+    FlyInnerStroke.Parent = FlyInnerBorder
+    local FlyDoveIcon = Instance.new("ImageLabel")
+    FlyDoveIcon.Size = UDim2.new(0.76, 0, 0.76, 0)
+    FlyDoveIcon.Position = UDim2.new(0.5, 0, 0.5, 0)
+    FlyDoveIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+    FlyDoveIcon.BackgroundTransparency = 1
+    FlyDoveIcon.ScaleType = Enum.ScaleType.Fit
+    FlyDoveIcon.ImageColor3 = Colors.MintNeon
+    FlyDoveIcon.Parent = FlyFloatBtn
+    task.spawn(function()
+        local success, assetUrl = pcall(function()
+            if writefile and getcustomasset then
+                local fileName = "lony_dove_icon.png"
+                if not isfile(fileName) then
+                    local imgData = game:HttpGet("https://img.icons8.com/ios/250/ffffff/peace-pigeon.png")
+                    writefile(fileName, imgData)
+                end
+                return getcustomasset(fileName)
+            end
+        end)
+        FlyDoveIcon.Image = (success and assetUrl) or "rbxassetid://13321848320"
+    end)
+    MakeFlyDraggable(FlyFloatBtn, FlyFloatBtn)
+    local FlyMainFrame = Instance.new("Frame")
+    FlyMainFrame.Name = "MainFrame"
+    FlyMainFrame.Size = UDim2.fromOffset(340, 235)
+    FlyMainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    FlyMainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    FlyMainFrame.BackgroundColor3 = Colors.BgDark
+    FlyMainFrame.BackgroundTransparency = 0.3
+    FlyMainFrame.BorderSizePixel = 0
+    FlyMainFrame.Parent = FlyScreenGui
+    local FlyMainScale = Instance.new("UIScale")
+    FlyMainScale.Scale = 1
+    FlyMainScale.Parent = FlyMainFrame
+    Instance.new("UICorner", FlyMainFrame).CornerRadius = UDim.new(0, 10)
+    local FlyMainStroke = Instance.new("UIStroke")
+    FlyMainStroke.Color = Colors.MintNeon
+    FlyMainStroke.Thickness = 1
+    FlyMainStroke.Transparency = 0.1
+    FlyMainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    FlyMainStroke.Parent = FlyMainFrame
+    local FlyTopBar = Instance.new("Frame")
+    FlyTopBar.Size = UDim2.new(1, 0, 0, 28)
+    FlyTopBar.BackgroundColor3 = Colors.HeaderBg
+    FlyTopBar.BackgroundTransparency = 0.2
+    FlyTopBar.BorderSizePixel = 0
+    FlyTopBar.Parent = FlyMainFrame
+    Instance.new("UICorner", FlyTopBar).CornerRadius = UDim.new(0, 10)
+    local FlyTopTitle = Instance.new("TextLabel")
+    FlyTopTitle.Size = UDim2.new(1, 0, 1, 0)
+    FlyTopTitle.BackgroundTransparency = 1
+    FlyTopTitle.Text = "Lony 1.0"
+    FlyTopTitle.TextColor3 = Colors.TextWhite
+    FlyTopTitle.Font = Enum.Font.GothamBold
+    FlyTopTitle.TextSize = 13
+    FlyTopTitle.Parent = FlyTopBar
+    MakeFlyDraggable(FlyTopBar, FlyMainFrame)
+    local FlyHeaderLine = Instance.new("Frame")
+    FlyHeaderLine.Size = UDim2.new(1, 0, 0, 1)
+    FlyHeaderLine.Position = UDim2.new(0, 0, 0, 28)
+    FlyHeaderLine.BackgroundColor3 = Colors.MintNeon
+    FlyHeaderLine.BackgroundTransparency = 0.25
+    FlyHeaderLine.BorderSizePixel = 0
+    FlyHeaderLine.ZIndex = 3
+    FlyHeaderLine.Parent = FlyMainFrame
+    local FlySidebar = Instance.new("Frame")
+    FlySidebar.Size = UDim2.new(0, 78, 1, -29)
+    FlySidebar.Position = UDim2.new(0, 0, 0, 29)
+    FlySidebar.BackgroundColor3 = Colors.HeaderBg
+    FlySidebar.BackgroundTransparency = 0.45
+    FlySidebar.BorderSizePixel = 0
+    FlySidebar.Parent = FlyMainFrame
+    Instance.new("UICorner", FlySidebar).CornerRadius = UDim.new(0, 10)
+    local MainTabBtn = Instance.new("TextButton")
+    MainTabBtn.Size = UDim2.fromOffset(62, 24)
+    MainTabBtn.Position = UDim2.fromOffset(8, 12)
+    MainTabBtn.BackgroundColor3 = Colors.MintNeon
+    MainTabBtn.Text = "Main"
+    MainTabBtn.TextColor3 = Colors.HeaderBg
+    MainTabBtn.Font = Enum.Font.GothamBold
+    MainTabBtn.TextSize = 12
+    MainTabBtn.AutoButtonColor = false
+    MainTabBtn.Parent = FlySidebar
+    Instance.new("UICorner", MainTabBtn).CornerRadius = UDim.new(0, 5)
+    local FlyVerticalLine = Instance.new("Frame")
+    FlyVerticalLine.Size = UDim2.new(0, 1, 1, -29)
+    FlyVerticalLine.Position = UDim2.new(0, 78, 0, 29)
+    FlyVerticalLine.BackgroundColor3 = Colors.MintNeon
+    FlyVerticalLine.BackgroundTransparency = 0.25
+    FlyVerticalLine.BorderSizePixel = 0
+    FlyVerticalLine.ZIndex = 3
+    FlyVerticalLine.Parent = FlyMainFrame
+    local InnerBox = Instance.new("Frame")
+    InnerBox.Size = UDim2.new(1, -94, 1, -43)
+    InnerBox.Position = UDim2.fromOffset(86, 36)
+    InnerBox.BackgroundTransparency = 1
+    InnerBox.Parent = FlyMainFrame
+    Instance.new("UICorner", InnerBox).CornerRadius = UDim.new(0, 8)
+    local InnerBoxStroke = Instance.new("UIStroke")
+    InnerBoxStroke.Color = Colors.MintNeon
+    InnerBoxStroke.Thickness = 1
+    InnerBoxStroke.Transparency = 0.35
+    InnerBoxStroke.Parent = InnerBox
+    local ContentList = Instance.new("Frame")
+    ContentList.Size = UDim2.new(1, -20, 1, -16)
+    ContentList.Position = UDim2.fromOffset(10, 8)
+    ContentList.BackgroundTransparency = 1
+    ContentList.Parent = InnerBox
+    local ListLayout = Instance.new("UIListLayout")
+    ListLayout.Padding = UDim.new(0, 8)
+    ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    ListLayout.Parent = ContentList
+    local function CreateCheckbox(labelText, order, onToggle)
+        local Row = Instance.new("Frame")
+        Row.Size = UDim2.new(1, 0, 0, 24)
+        Row.BackgroundTransparency = 1
+        Row.LayoutOrder = order
+        Row.Parent = ContentList
+        local BoxBtn = Instance.new("TextButton")
+        BoxBtn.Size = UDim2.fromOffset(22, 22)
+        BoxBtn.Position = UDim2.new(0, 0, 0.5, 0)
+        BoxBtn.AnchorPoint = Vector2.new(0, 0.5)
+        BoxBtn.BackgroundColor3 = Colors.HeaderBg
+        BoxBtn.BackgroundTransparency = 0.2
+        BoxBtn.Text = ""
+        BoxBtn.AutoButtonColor = false
+        BoxBtn.Parent = Row
+        Instance.new("UICorner", BoxBtn).CornerRadius = UDim.new(0, 5)
+        local BoxStroke = Instance.new("UIStroke")
+        BoxStroke.Color = Colors.MintNeon
+        BoxStroke.Thickness = 1.3
+        BoxStroke.Parent = BoxBtn
+        local CheckMark = Instance.new("TextLabel")
+        CheckMark.Size = UDim2.new(1, 0, 1, 0)
+        CheckMark.BackgroundTransparency = 1
+        CheckMark.Text = "✓"
+        CheckMark.TextColor3 = Colors.MintNeon
+        CheckMark.Font = Enum.Font.GothamBold
+        CheckMark.TextSize = 15
+        CheckMark.Visible = false
+        CheckMark.Parent = BoxBtn
+        local Label = Instance.new("TextLabel")
+        Label.Size = UDim2.new(1, -32, 1, 0)
+        Label.Position = UDim2.fromOffset(30, 0)
+        Label.BackgroundTransparency = 1
+        Label.Text = labelText
+        Label.TextColor3 = Colors.TextWhite
+        Label.Font = Enum.Font.GothamBold
+        Label.TextSize = 12
+        Label.TextXAlignment = Enum.TextXAlignment.Left
+        Label.Parent = Row
+        local ClickArea = Instance.new("TextButton")
+        ClickArea.Size = UDim2.new(1, 0, 1, 0)
+        ClickArea.BackgroundTransparency = 1
+        ClickArea.Text = ""
+        ClickArea.Parent = Row
+        local function setVisual(state)
+            CheckMark.Visible = state
+            TweenService:Create(BoxBtn, TweenInfo.new(0.15), {
+                BackgroundColor3 = state and Color3.fromRGB(0, 65, 50) or Colors.HeaderBg
+            }):Play()
+        end
+        ClickArea.MouseButton1Click:Connect(function()
+            onToggle()
+        end)
+        return setVisual
+    end
+    local function CreateThinDivider(order)
+        local Div = Instance.new("Frame")
+        Div.Size = UDim2.new(1, 0, 0, 1)
+        Div.BackgroundColor3 = Colors.MintNeon
+        Div.BackgroundTransparency = 0.4
+        Div.BorderSizePixel = 0
+        Div.LayoutOrder = order
+        Div.Parent = ContentList
+    end
+    local function CreateSliderWithInput(labelText, minVal, maxVal, defaultVal, order, onValueChanged)
+        local Row = Instance.new("Frame")
+        Row.Size = UDim2.new(1, 0, 0, 26)
+        Row.BackgroundTransparency = 1
+        Row.LayoutOrder = order
+        Row.Parent = ContentList
+        local Track = Instance.new("Frame")
+        Track.Size = UDim2.new(0.54, 0, 0, 22)
+        Track.Position = UDim2.new(0, 0, 0.5, 0)
+        Track.AnchorPoint = Vector2.new(0, 0.5)
+        Track.BackgroundColor3 = Colors.HeaderBg
+        Track.BackgroundTransparency = 0.15
+        Track.ClipsDescendants = true
+        Track.Parent = Row
+        Instance.new("UICorner", Track).CornerRadius = UDim.new(0, 6)
+        local TrackStroke = Instance.new("UIStroke")
+        TrackStroke.Color = Colors.MintNeon
+        TrackStroke.Thickness = 1.2
+        TrackStroke.Parent = Track
+        local Thumb = Instance.new("Frame")
+        Thumb.Size = UDim2.fromOffset(18, 18)
+        Thumb.AnchorPoint = Vector2.new(0.5, 0.5)
+        Thumb.Position = UDim2.new(0, 9, 0.5, 0)
+        Thumb.BackgroundColor3 = Colors.MintNeon
+        Thumb.BorderSizePixel = 0
+        Thumb.Parent = Track
+        Instance.new("UICorner", Thumb).CornerRadius = UDim.new(0, 5)
+        local TrackValueLabel = Instance.new("TextLabel")
+        TrackValueLabel.Size = UDim2.new(1, 0, 1, 0)
+        TrackValueLabel.BackgroundTransparency = 1
+        TrackValueLabel.Text = tostring(defaultVal)
+        TrackValueLabel.TextColor3 = Colors.TextWhite
+        TrackValueLabel.Font = Enum.Font.GothamBold
+        TrackValueLabel.TextSize = 11
+        TrackValueLabel.ZIndex = 2
+        TrackValueLabel.Parent = Track
+        local InputBox = Instance.new("TextBox")
+        InputBox.Size = UDim2.new(0.22, 0, 0, 22)
+        InputBox.Position = UDim2.new(0.56, 0, 0.5, 0)
+        InputBox.AnchorPoint = Vector2.new(0, 0.5)
+        InputBox.BackgroundColor3 = Colors.HeaderBg
+        InputBox.BackgroundTransparency = 0.15
+        InputBox.Text = tostring(defaultVal)
+        InputBox.PlaceholderText = "10-1000"
+        InputBox.TextColor3 = Colors.MintNeon
+        InputBox.PlaceholderColor3 = Colors.TextDim
+        InputBox.Font = Enum.Font.GothamBold
+        InputBox.TextSize = 11
+        InputBox.ClearTextOnFocus = false
+        InputBox.Parent = Row
+        Instance.new("UICorner", InputBox).CornerRadius = UDim.new(0, 5)
+        local InputStroke = Instance.new("UIStroke")
+        InputStroke.Color = Colors.MintNeon
+        InputStroke.Thickness = 1
+        InputStroke.Transparency = 0.3
+        InputStroke.Parent = InputBox
+        local TitleLabel = Instance.new("TextLabel")
+        TitleLabel.Size = UDim2.new(0.22, -6, 1, 0)
+        TitleLabel.Position = UDim2.new(0.78, 6, 0, 0)
+        TitleLabel.BackgroundTransparency = 1
+        TitleLabel.Text = labelText
+        TitleLabel.TextColor3 = Colors.TextWhite
+        TitleLabel.Font = Enum.Font.GothamBold
+        TitleLabel.TextSize = 11
+        TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+        TitleLabel.Parent = Row
+        local currentVal = defaultVal
+        local function setSpeedValue(val)
+            local clamped = math.clamp(math.floor(val + 0.5), minVal, maxVal)
+            currentVal = clamped
+            local alpha = (clamped - minVal) / (maxVal - minVal)
+            Thumb.Position = UDim2.new(alpha, 9 - (18 * alpha), 0.5, 0)
+            TrackValueLabel.Text = tostring(clamped)
+            InputBox.Text = tostring(clamped)
+            onValueChanged(clamped)
+        end
+        setSpeedValue(defaultVal)
+        local sliding = false
+        local function handleTrackInput(input)
+            local relX = (input.Position.X - Track.AbsolutePosition.X) / math.max(1, Track.AbsoluteSize.X)
+            relX = math.clamp(relX, 0, 1)
+            local rawVal = minVal + (maxVal - minVal) * relX
+            setSpeedValue(rawVal)
+        end
+        trackConn(Track.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                sliding = true
+                handleTrackInput(input)
+            end
+        end))
+        trackConn(UserInputService.InputChanged:Connect(function(input)
+            if sliding and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                handleTrackInput(input)
+            end
+        end))
+        trackConn(UserInputService.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                sliding = false
+            end
+        end))
+        trackConn(InputBox.FocusLost:Connect(function()
+            local num = tonumber(InputBox.Text)
+            if num then
+                if num > maxVal then
+                    num = maxVal
+                elseif num < minVal then
+                    num = minVal
+                end
+                setSpeedValue(num)
+            else
+                InputBox.Text = tostring(currentVal)
+            end
+        end))
+    end
+    local setSystemVisual, setFlyVisual, setNoclipVisual
+    local function cleanupPhysics()
+        if linearVel then linearVel:Destroy(); linearVel = nil end
+        if alignOri then alignOri:Destroy(); alignOri = nil end
+        if flyAttachment then flyAttachment:Destroy(); flyAttachment = nil end
+    end
+    local function stopFly()
+        flying = false
+        if flyConnection then
+            flyConnection:Disconnect()
+            flyConnection = nil
+        end
+        cleanupPhysics()
+        local h = humanoid()
+        if h then
+            h.PlatformStand = false
+            h.AutoRotate = true
+        end
+        local r = root()
+        if r then
+            r.AssemblyLinearVelocity = Vector3.zero
+            r.AssemblyAngularVelocity = Vector3.zero
+        end
+        if setFlyVisual then setFlyVisual(false) end
+    end
+    local function startFly()
+        local r = root()
+        local h = humanoid()
+        if not enabled or not r or not h then return end
+        stopFly()
+        flying = true
+        h.AutoRotate = false
+        h.PlatformStand = true
+        if setFlyVisual then setFlyVisual(true) end
+        flyAttachment = Instance.new("Attachment")
+        flyAttachment.Name = "FlightAttachment"
+        flyAttachment.Parent = r
+        linearVel = Instance.new("LinearVelocity")
+        linearVel.Attachment0 = flyAttachment
+        linearVel.MaxForce = math.huge
+        linearVel.VectorVelocity = Vector3.zero
+        linearVel.Parent = r
+        alignOri = Instance.new("AlignOrientation")
+        alignOri.Mode = Enum.OrientationAlignmentMode.OneAttachment
+        alignOri.Attachment0 = flyAttachment
+        alignOri.MaxTorque = math.huge
+        alignOri.Responsiveness = 50
+        alignOri.Parent = r
+        flyConnection = RunService.RenderStepped:Connect(function()
+            local currentRoot = root()
+            if not enabled or not flying or not currentRoot then
+                stopFly()
+                return
+            end
+            local cam = workspace.CurrentCamera
+            local move = Vector3.zero
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then move += cam.CFrame.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then move -= cam.CFrame.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then move += cam.CFrame.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then move -= cam.CFrame.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then move += Vector3.yAxis end
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then move -= Vector3.yAxis end
+            if move.Magnitude > 0 then
+                move = move.Unit * speed
+            end
+            linearVel.VectorVelocity = move
+            alignOri.CFrame = cam.CFrame
+        end)
+    end
+    local function setNoclip(value)
+        noclip = value
+        if clipConnection then
+            clipConnection:Disconnect()
+            clipConnection = nil
+        end
+        if noclip then
+            clipConnection = RunService.Stepped:Connect(function()
+                local c = character()
+                if not c then return end
+                for _, part in ipairs(c:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        if savedCollisions[part] == nil then
+                            savedCollisions[part] = part.CanCollide
+                        end
+                        part.CanCollide = false
+                    end
+                end
+            end)
+        else
+            for part, oldValue in pairs(savedCollisions) do
+                if part and part.Parent then
+                    part.CanCollide = oldValue
+                end
+            end
+            table.clear(savedCollisions)
+        end
+        if setNoclipVisual then setNoclipVisual(noclip) end
+    end
+    setSystemVisual = CreateCheckbox("Flight System", 1, function()
+        enabled = not enabled
+        setSystemVisual(enabled)
+        if not enabled then
+            stopFly()
+            setNoclip(false)
+        end
+    end)
+    CreateThinDivider(2)
+    CreateSliderWithInput("Speed", MIN_SPEED, MAX_SPEED, speed, 3, function(newSpeed)
+        speed = newSpeed
+    end)
+    setFlyVisual = CreateCheckbox("Fly Mode (Key: U)", 4, function()
+        if not enabled then return end
+        if flying then stopFly() else startFly() end
+    end)
+    setNoclipVisual = CreateCheckbox("Noclip", 5, function()
+        if not enabled then return end
+        setNoclip(not noclip)
+    end)
+    local HintLabel = Instance.new("TextLabel")
+    HintLabel.Size = UDim2.new(1, 0, 0, 18)
+    HintLabel.BackgroundColor3 = Colors.HeaderBg
+    HintLabel.BackgroundTransparency = 0.35
+    HintLabel.Text = "WASD: Move | Space/Ctrl: Up/Down"
+    HintLabel.TextColor3 = Colors.TextDim
+    HintLabel.Font = Enum.Font.GothamMedium
+    HintLabel.TextSize = 10
+    HintLabel.LayoutOrder = 6
+    HintLabel.Parent = ContentList
+    Instance.new("UICorner", HintLabel).CornerRadius = UDim.new(0, 4)
+    trackConn(UserInputService.InputBegan:Connect(function(input, processed)
+        if processed then return end
+        if input.KeyCode == Enum.KeyCode.U and enabled then
+            if flying then stopFly() else startFly() end
+        end
+    end))
+    trackConn(player.CharacterAdded:Connect(function()
+        table.clear(savedCollisions)
+        stopFly()
+        setNoclip(false)
+    end))
+    local isFlyMenuOpen = true
+    FlyFloatBtn.MouseButton1Click:Connect(function()
+        isFlyMenuOpen = not isFlyMenuOpen
+        if isFlyMenuOpen then
+            FlyMainFrame.Visible = true
+            FlyBlur.Size = 12
+            TweenService:Create(FlyBlur, TweenInfo.new(0.3), {Size = 0}):Play()
+            TweenService:Create(FlyMainScale, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
+            TweenService:Create(FlyFloatStroke, TweenInfo.new(0.2), {Color = Colors.MintNeon}):Play()
+            TweenService:Create(FlyDoveIcon, TweenInfo.new(0.2), {ImageColor3 = Colors.MintNeon}):Play()
+        else
+            TweenService:Create(FlyMainScale, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Scale = 0}):Play()
+            TweenService:Create(FlyFloatStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(100, 120, 115)}):Play()
+            TweenService:Create(FlyDoveIcon, TweenInfo.new(0.2), {ImageColor3 = Color3.fromRGB(130, 150, 145)}):Play()
+            task.delay(0.16, function()
+                if not isFlyMenuOpen and FlyMainFrame and FlyMainFrame.Parent then
+                    FlyMainFrame.Visible = false
+                end
+            end)
+        end
+    end)
+    FlyGuiCleanup = function()
+        enabled = false
+        stopFly()
+        setNoclip(false)
+        for _, conn in ipairs(connections) do
+            if conn.Connected then
+                conn:Disconnect()
+            end
+        end
+        table.clear(connections)
+        if FlyScreenGui then FlyScreenGui:Destroy() end
+        if FlyBlur then FlyBlur:Destroy() end
+    end
+end
+CreateMenuCheckbox(TabMain, "Fly Gui", 1, function(isEnabled)
+    if isEnabled then
+        StartFlyGuiSystem()
+    else
+        StopFlyGuiSystem()
+    end
+end)
+local isMenuOpen = true
+FloatBtn.MouseButton1Click:Connect(function()
+    isMenuOpen = not isMenuOpen
+    if isMenuOpen then
+        MainFrame.Visible = true
+        MenuBlur.Size = 14
+        TweenService:Create(MenuBlur, TweenInfo.new(0.35), {Size = 0}):Play()
+        TweenService:Create(MainScale, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
+        TweenService:Create(FloatStroke, TweenInfo.new(0.2), {Color = Colors.MintNeon}):Play()
+        TweenService:Create(DoveIcon, TweenInfo.new(0.2), {ImageColor3 = Colors.MintNeon}):Play()
+    else
+        TweenService:Create(MainScale, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Scale = 0}):Play()
+        TweenService:Create(FloatStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(100, 120, 115)}):Play()
+        TweenService:Create(DoveIcon, TweenInfo.new(0.2), {ImageColor3 = Color3.fromRGB(130, 150, 145)}):Play()
+        task.delay(0.18, function()
+            if not isMenuOpen then
+                MainFrame.Visible = false
+            end
+        end)
+    end
+end)
