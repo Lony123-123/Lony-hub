@@ -1,0 +1,276 @@
+local parentGui = (gethui and gethui()) or game:GetService("CoreGui") or game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+if parentGui:FindFirstChild("EleutheriaGUI") then
+    parentGui.EleutheriaGUI:Destroy()
+end
+if parentGui:FindFirstChild("LonyGUI") then
+    parentGui.LonyGUI:Destroy()
+end
+if game:GetService("Lighting"):FindFirstChild("EleutheriaBlur") then
+    game:GetService("Lighting").EleutheriaBlur:Destroy()
+end
+if game:GetService("Lighting"):FindFirstChild("LonyBlur") then
+    game:GetService("Lighting").LonyBlur:Destroy()
+end
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local Lighting = game:GetService("Lighting")
+local Colors = {
+    BgDark = Color3.fromRGB(14, 19, 24),
+    HeaderBg = Color3.fromRGB(8, 11, 14),
+    MintNeon = Color3.fromRGB(0, 255, 195),
+    TextWhite = Color3.fromRGB(255, 255, 255),
+}
+local MenuBlur = Instance.new("BlurEffect")
+MenuBlur.Name = "LonyBlur"
+MenuBlur.Size = 0
+MenuBlur.Parent = Lighting
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "LonyGUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = parentGui
+local function MakeDraggable(dragHandle, targetFrame)
+    local dragging, dragInput, dragStart, startPos
+    dragHandle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = targetFrame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    dragHandle.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            targetFrame.Position = UDim2.new(
+                startPos.X.Scale, startPos.X.Offset + delta.X,
+                startPos.Y.Scale, startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+end
+local FloatBtn = Instance.new("ImageButton")
+FloatBtn.Name = "FloatingButton"
+FloatBtn.Size = UDim2.new(0, 58, 0, 58)
+FloatBtn.Position = UDim2.new(0, 25, 0.45, 0)
+FloatBtn.BackgroundColor3 = Colors.BgDark
+FloatBtn.BackgroundTransparency = 0.25
+FloatBtn.AutoButtonColor = false
+FloatBtn.Parent = ScreenGui
+local FloatCorner = Instance.new("UICorner")
+FloatCorner.CornerRadius = UDim.new(0, 11)
+FloatCorner.Parent = FloatBtn
+local FloatStroke = Instance.new("UIStroke")
+FloatStroke.Color = Colors.MintNeon
+FloatStroke.Thickness = 1.8
+FloatStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+FloatStroke.Parent = FloatBtn
+local InnerBorder = Instance.new("Frame")
+InnerBorder.Size = UDim2.new(1, -4, 1, -4)
+InnerBorder.Position = UDim2.new(0.5, 0, 0.5, 0)
+InnerBorder.AnchorPoint = Vector2.new(0.5, 0.5)
+InnerBorder.BackgroundTransparency = 1
+InnerBorder.Parent = FloatBtn
+local InnerCorner = Instance.new("UICorner")
+InnerCorner.CornerRadius = UDim.new(0, 9)
+InnerCorner.Parent = InnerBorder
+local InnerStroke = Instance.new("UIStroke")
+InnerStroke.Color = Colors.MintNeon
+InnerStroke.Thickness = 0.8
+InnerStroke.Transparency = 0.4
+InnerStroke.Parent = InnerBorder
+local DoveIcon = Instance.new("ImageLabel")
+DoveIcon.Name = "DoveIcon"
+DoveIcon.Size = UDim2.new(0.78, 0, 0.78, 0)
+DoveIcon.Position = UDim2.new(0.5, 0, 0.5, 0)
+DoveIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+DoveIcon.BackgroundTransparency = 1
+DoveIcon.ScaleType = Enum.ScaleType.Fit
+DoveIcon.ImageColor3 = Colors.MintNeon
+DoveIcon.Parent = FloatBtn
+task.spawn(function()
+    local success, assetUrl = pcall(function()
+        if writefile and getcustomasset then
+            local fileName = "lony_dove_icon.png"
+            if not isfile(fileName) then
+                local imgData = game:HttpGet("https://img.icons8.com/ios/250/ffffff/peace-pigeon.png")
+                writefile(fileName, imgData)
+            end
+            return getcustomasset(fileName)
+        end
+    end)
+    if success and assetUrl then
+        DoveIcon.Image = assetUrl
+    else
+        DoveIcon.Image = "rbxassetid://13321848320"
+    end
+end)
+MakeDraggable(FloatBtn, FloatBtn)
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 580, 0, 360)
+MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+MainFrame.BackgroundColor3 = Colors.BgDark
+MainFrame.BackgroundTransparency = 0.35
+MainFrame.BorderSizePixel = 0
+MainFrame.Parent = ScreenGui
+local MainScale = Instance.new("UIScale")
+MainScale.Scale = 1
+MainScale.Parent = MainFrame
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 12)
+MainCorner.Parent = MainFrame
+local MainStroke = Instance.new("UIStroke")
+MainStroke.Color = Colors.MintNeon
+MainStroke.Thickness = 1
+MainStroke.Transparency = 0.1
+MainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+MainStroke.Parent = MainFrame
+local TopBar = Instance.new("Frame")
+TopBar.Size = UDim2.new(1, 0, 0, 34)
+TopBar.BackgroundColor3 = Colors.HeaderBg
+TopBar.BackgroundTransparency = 0.2
+TopBar.BorderSizePixel = 0
+TopBar.Parent = MainFrame
+local TopCorner = Instance.new("UICorner")
+TopCorner.CornerRadius = UDim.new(0, 12)
+TopCorner.Parent = TopBar
+local TopTitle = Instance.new("TextLabel")
+TopTitle.Size = UDim2.new(1, 0, 1, 0)
+TopTitle.BackgroundTransparency = 1
+TopTitle.Text = "Lony 1.0"
+TopTitle.TextColor3 = Colors.TextWhite
+TopTitle.Font = Enum.Font.GothamBold
+TopTitle.TextSize = 14
+TopTitle.Parent = TopBar
+MakeDraggable(TopBar, MainFrame)
+local HeaderLine = Instance.new("Frame")
+HeaderLine.Size = UDim2.new(1, 0, 0, 1)
+HeaderLine.Position = UDim2.new(0, 0, 0, 34)
+HeaderLine.BackgroundColor3 = Colors.MintNeon
+HeaderLine.BackgroundTransparency = 0.25
+HeaderLine.BorderSizePixel = 0
+HeaderLine.ZIndex = 3
+HeaderLine.Parent = MainFrame
+local Sidebar = Instance.new("Frame")
+Sidebar.Size = UDim2.new(0, 115, 1, -35)
+Sidebar.Position = UDim2.new(0, 0, 0, 35)
+Sidebar.BackgroundColor3 = Colors.HeaderBg
+Sidebar.BackgroundTransparency = 0.45
+Sidebar.BorderSizePixel = 0
+Sidebar.Parent = MainFrame
+local SidebarCorner = Instance.new("UICorner")
+SidebarCorner.CornerRadius = UDim.new(0, 12)
+SidebarCorner.Parent = Sidebar
+local SidebarLayout = Instance.new("UIListLayout")
+SidebarLayout.Padding = UDim.new(0, 12)
+SidebarLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+SidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
+SidebarLayout.Parent = Sidebar
+local SidebarPadding = Instance.new("UIPadding")
+SidebarPadding.PaddingTop = UDim.new(0, 18)
+SidebarPadding.Parent = Sidebar
+local VerticalLine = Instance.new("Frame")
+VerticalLine.Size = UDim2.new(0, 1, 1, -35)
+VerticalLine.Position = UDim2.new(0, 115, 0, 35)
+VerticalLine.BackgroundColor3 = Colors.MintNeon
+VerticalLine.BackgroundTransparency = 0.25
+VerticalLine.BorderSizePixel = 0
+VerticalLine.ZIndex = 3
+VerticalLine.Parent = MainFrame
+local ContentArea = Instance.new("Frame")
+ContentArea.Size = UDim2.new(1, -116, 1, -35)
+ContentArea.Position = UDim2.new(0, 116, 0, 35)
+ContentArea.BackgroundTransparency = 1
+ContentArea.Parent = MainFrame
+local Tabs = {}
+local TabButtons = {}
+local function SwitchTab(tabName)
+    for name, page in pairs(Tabs) do
+        page.Visible = (name == tabName)
+    end
+    for name, btn in pairs(TabButtons) do
+        if name == tabName then
+            TweenService:Create(btn, TweenInfo.new(0.18, Enum.EasingStyle.Quad), {
+                BackgroundTransparency = 0,
+                BackgroundColor3 = Colors.MintNeon
+            }):Play()
+        else
+            TweenService:Create(btn, TweenInfo.new(0.18, Enum.EasingStyle.Quad), {
+                BackgroundTransparency = 1
+            }):Play()
+        end
+    end
+end
+local function CreateTab(name, isDefault)
+    local Btn = Instance.new("TextButton")
+    Btn.Size = UDim2.new(0, 82, 0, 28)
+    Btn.BackgroundColor3 = Colors.MintNeon
+    Btn.BackgroundTransparency = isDefault and 0 or 1
+    Btn.Text = name
+    Btn.TextColor3 = Colors.TextWhite
+    Btn.Font = Enum.Font.GothamBold
+    Btn.TextSize = 13
+    Btn.AutoButtonColor = false
+    Btn.Parent = Sidebar
+    local BtnCorner = Instance.new("UICorner")
+    BtnCorner.CornerRadius = UDim.new(0, 6)
+    BtnCorner.Parent = Btn
+    local Page = Instance.new("ScrollingFrame")
+    Page.Size = UDim2.new(1, 0, 1, 0)
+    Page.BackgroundTransparency = 1
+    Page.BorderSizePixel = 0
+    Page.ScrollBarThickness = 2
+    Page.ScrollBarImageColor3 = Colors.MintNeon
+    Page.Visible = isDefault or false
+    Page.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    Page.CanvasSize = UDim2.new(0, 0, 0, 0)
+    Page.Parent = ContentArea
+    local PageLayout = Instance.new("UIListLayout")
+    PageLayout.Padding = UDim.new(0, 8)
+    PageLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    PageLayout.Parent = Page
+    local PagePadding = Instance.new("UIPadding")
+    PagePadding.PaddingTop = UDim.new(0, 12)
+    PagePadding.PaddingLeft = UDim.new(0, 14)
+    PagePadding.PaddingRight = UDim.new(0, 14)
+    PagePadding.Parent = Page
+    Tabs[name] = Page
+    TabButtons[name] = Btn
+    Btn.MouseButton1Click:Connect(function()
+        SwitchTab(name)
+    end)
+    return Page
+end
+local TabMain = CreateTab("Main", true)
+local isMenuOpen = true
+FloatBtn.MouseButton1Click:Connect(function()
+    isMenuOpen = not isMenuOpen
+    if isMenuOpen then
+        MainFrame.Visible = true
+        MenuBlur.Size = 14
+        TweenService:Create(MenuBlur, TweenInfo.new(0.35), {Size = 0}):Play()
+        TweenService:Create(MainScale, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
+        TweenService:Create(FloatStroke, TweenInfo.new(0.2), {Color = Colors.MintNeon}):Play()
+        TweenService:Create(DoveIcon, TweenInfo.new(0.2), {ImageColor3 = Colors.MintNeon}):Play()
+    else
+        TweenService:Create(MainScale, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Scale = 0}):Play()
+        TweenService:Create(FloatStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(100, 120, 115)}):Play()
+        TweenService:Create(DoveIcon, TweenInfo.new(0.2), {ImageColor3 = Color3.fromRGB(130, 150, 145)}):Play()
+        task.delay(0.18, function()
+            if not isMenuOpen then
+                MainFrame.Visible = false
+            end
+        end)
+    end
+end)
