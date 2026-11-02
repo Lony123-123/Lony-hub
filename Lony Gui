@@ -337,6 +337,11 @@ local function StartFlyGuiSystem()
     local enabled = false
     local flying = false
     local noclip = false
+    local safeMode = false
+    local healthThreshold = 50
+    local safeModeAscending = false
+    local heldAltitude = nil
+    local SAFE_ASCEND_SPEED = 5000
     local flyConnection
     local clipConnection
     local savedCollisions = {}
@@ -643,7 +648,7 @@ local function StartFlyGuiSystem()
         InputBox.BackgroundColor3 = Colors.HeaderBg
         InputBox.BackgroundTransparency = 0.15
         InputBox.Text = tostring(defaultVal)
-        InputBox.PlaceholderText = "10-1000"
+        InputBox.PlaceholderText = tostring(minVal) .. "-" .. tostring(maxVal)
         InputBox.TextColor3 = Colors.MintNeon
         InputBox.PlaceholderColor3 = Colors.TextDim
         InputBox.Font = Enum.Font.GothamBold
@@ -714,7 +719,7 @@ local function StartFlyGuiSystem()
             end
         end))
     end
-    local setSystemVisual, setFlyVisual, setNoclipVisual
+    local setSystemVisual, setFlyVisual, setNoclipVisual, setSafeModeVisual
     local function cleanupPhysics()
         if linearVel then linearVel:Destroy(); linearVel = nil end
         if alignOri then alignOri:Destroy(); alignOri = nil end
@@ -770,15 +775,42 @@ local function StartFlyGuiSystem()
             end
             local cam = workspace.CurrentCamera
             local move = Vector3.zero
-            if UserInputService:IsKeyDown(Enum.KeyCode.W) then move += cam.CFrame.LookVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.S) then move -= cam.CFrame.LookVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.D) then move += cam.CFrame.RightVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.A) then move -= cam.CFrame.RightVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then move += Vector3.yAxis end
-            if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then move -= Vector3.yAxis end
-            if move.Magnitude > 0 then
-                move = move.Unit * speed
+            local currentHumanoid = humanoid()
+
+            -- Safe Mode: bật noclip và tự kích hoạt bay lên khi máu <= ngưỡng.
+            if safeMode and currentHumanoid and currentHumanoid.MaxHealth > 0 then
+                local healthPercent = (currentHumanoid.Health / currentHumanoid.MaxHealth) * 100
+                safeModeAscending = healthPercent <= healthThreshold
+
+                if safeModeAscending then
+                    heldAltitude = math.max(heldAltitude or currentRoot.Position.Y, currentRoot.Position.Y)
+                    -- Giữ độ cao; nếu tụt xuống thì tiếp tục bay lên để lấy lại độ cao đã giữ.
+                    if currentRoot.Position.Y < heldAltitude - 2 then
+                        move = Vector3.yAxis * SAFE_ASCEND_SPEED
+                    end
+                else
+                    heldAltitude = nil
+                end
+            else
+                safeModeAscending = false
+                heldAltitude = nil
             end
+
+            if safeModeAscending then
+                -- Chế độ tự bay lên ưu tiên hơn điều khiển thông thường.
+                move = Vector3.yAxis * SAFE_ASCEND_SPEED
+            else
+                if UserInputService:IsKeyDown(Enum.KeyCode.W) then move += cam.CFrame.LookVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.S) then move -= cam.CFrame.LookVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.D) then move += cam.CFrame.RightVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.A) then move -= cam.CFrame.RightVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.Space) then move += Vector3.yAxis end
+                if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then move -= Vector3.yAxis end
+                if move.Magnitude > 0 then
+                    move = move.Unit * speed
+                end
+            end
+
             linearVel.VectorVelocity = move
             alignOri.CFrame = cam.CFrame
         end)
@@ -817,6 +849,10 @@ local function StartFlyGuiSystem()
         setSystemVisual(enabled)
         if not enabled then
             stopFly()
+            safeMode = false
+            safeModeAscending = false
+            heldAltitude = nil
+            if setSafeModeVisual then setSafeModeVisual(false) end
             setNoclip(false)
         end
     end)
@@ -824,14 +860,34 @@ local function StartFlyGuiSystem()
     CreateSliderWithInput("Speed", MIN_SPEED, MAX_SPEED, speed, 3, function(newSpeed)
         speed = newSpeed
     end)
-    setFlyVisual = CreateCheckbox("Fly Mode (Key: U)", 4, function()
+    setFlyVisual = CreateCheckbox("Fly Mode", 4, function()
         if not enabled then return end
         if flying then stopFly() else startFly() end
     end)
-    setNoclipVisual = CreateCheckbox("Noclip", 5, function()
-        if not enabled then return end
-        setNoclip(not noclip)
+
+    setSafeModeVisual = CreateCheckbox("Safe Mode", 5, function()
+        safeMode = not safeMode
+        setSafeModeVisual(safeMode)
+
+        if safeMode then
+            -- Safe Mode tự bật Flight System, Fly và Noclip.
+            if not enabled then
+                enabled = true
+                setSystemVisual(true)
+            end
+            setNoclip(true)
+            if not flying then startFly() end
+        else
+            safeModeAscending = false
+            heldAltitude = nil
+            setNoclip(false)
+        end
     end)
+
+    CreateSliderWithInput("HP Trigger %", 1, 100, healthThreshold, 6, function(value)
+        healthThreshold = value
+    end)
+
     local HintLabel = Instance.new("TextLabel")
     HintLabel.Size = UDim2.new(1, 0, 0, 18)
     HintLabel.BackgroundColor3 = Colors.HeaderBg
@@ -840,19 +896,15 @@ local function StartFlyGuiSystem()
     HintLabel.TextColor3 = Colors.TextDim
     HintLabel.Font = Enum.Font.GothamMedium
     HintLabel.TextSize = 10
-    HintLabel.LayoutOrder = 6
+    HintLabel.LayoutOrder = 7
     HintLabel.Parent = ContentList
     Instance.new("UICorner", HintLabel).CornerRadius = UDim.new(0, 4)
-    trackConn(UserInputService.InputBegan:Connect(function(input, processed)
-        if processed then return end
-        if input.KeyCode == Enum.KeyCode.U and enabled then
-            if flying then stopFly() else startFly() end
-        end
-    end))
     trackConn(player.CharacterAdded:Connect(function()
         table.clear(savedCollisions)
+        safeModeAscending = false
+        heldAltitude = nil
         stopFly()
-        setNoclip(false)
+        if safeMode then setNoclip(true) else setNoclip(false) end
     end))
     local isFlyMenuOpen = true
     FlyFloatBtn.MouseButton1Click:Connect(function()
@@ -877,6 +929,9 @@ local function StartFlyGuiSystem()
     end)
     FlyGuiCleanup = function()
         enabled = false
+        safeMode = false
+        safeModeAscending = false
+        heldAltitude = nil
         stopFly()
         setNoclip(false)
         for _, conn in ipairs(connections) do
