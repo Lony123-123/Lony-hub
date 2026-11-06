@@ -1,0 +1,21 @@
+===================================================================
+       HƯỚNG DẪN SỬ DỤNG LONY 1.0 MINECRAFT FABRIC MOD
+===================================================================
+
+1. CẤU TRÚC THƯ MỤC ĐÃ ĐƯỢC TẠO SẴN:
+   - Toàn bộ mã nguồn Java (LonyClientMod.java, LonyScreen.java)
+   - Cấu hình phím tắt Right Shift (GLFW_KEY_RIGHT_SHIFT)
+   - Cấu hình Gradle (build.gradle, gradle.properties, settings.gradle)
+   - Cấu hình tự động xuất file .jar trên GitHub (.github/workflows/build.yml)
+
+2. CÁCH LẤY FILE .JAR ĐỂ BỎ VÀO THƯ MỤC .minecraft/mods:
+   * Cách 1 (Trên máy tính có cài Java 17):
+     - Giải nén file lony-client-mod-project.zip
+     - Mở Command Prompt (CMD) tại thư mục vừa giải nén và chạy lệnh:
+       gradle build
+     - File mod hoàn chỉnh sẽ nằm tại: build/libs/lony-client-1.0.0.jar
+
+   * Cách 2 (Không cần cài đặt gì trên máy - Dùng GitHub miễn phí):
+     - Tải thư mục đã giải nén lên 1 Repository trên GitHub.
+     - Vào tab "Actions" trên GitHub, GitHub sẽ tự động đóng gói ra file
+       `lony-client-1.0.0.jar` để bạn tải trực tiếp về máy!
