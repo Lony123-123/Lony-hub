@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "lonyclient",
+  "version": "1.0.0",
+  "name": "Lony 1.0 Client",
+  "description": "Lony 1.0 Custom GUI Client Mod ported from Roblox UI (Press Right Shift to open).",
+  "authors": ["Lony"],
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.lony.LonyClientMod"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.15.0",
+    "minecraft": "~1.20.4",
+    "java": ">=17",
+    "fabric-api": "*"
+  }
+}
