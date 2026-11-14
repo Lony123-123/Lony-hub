@@ -4,13 +4,21 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
 local player = Players.LocalPlayer
+local mouse = player:GetMouse()
 local parentGui = (gethui and gethui()) or game:GetService("CoreGui") or player:WaitForChild("PlayerGui")
-for _, name in ipairs({"EleutheriaGUI", "LonyGUI", "LonyFlyGUI", "FlightControl"}) do
+local globalEnv = (getgenv and getgenv()) or _G
+if globalEnv.LonyGlobalCleanups then
+    for _, cleanupFn in pairs(globalEnv.LonyGlobalCleanups) do
+        pcall(cleanupFn)
+    end
+end
+globalEnv.LonyGlobalCleanups = {}
+for _, name in ipairs({"EleutheriaGUI", "LonyGUI", "LonyFlyGUI", "FlightControl", "LocationGUI"}) do
     if parentGui:FindFirstChild(name) then
         parentGui[name]:Destroy()
     end
 end
-for _, blurName in ipairs({"EleutheriaBlur", "LonyBlur", "LonyFlyBlur"}) do
+for _, blurName in ipairs({"EleutheriaBlur", "LonyBlur", "LonyFlyBlur", "LocationBlur"}) do
     if Lighting:FindFirstChild(blurName) then
         Lighting[blurName]:Destroy()
     end
@@ -19,8 +27,11 @@ local Colors = {
     BgDark = Color3.fromRGB(14, 19, 24),
     HeaderBg = Color3.fromRGB(8, 11, 14),
     MintNeon = Color3.fromRGB(0, 255, 195),
+    LemonYellow = Color3.fromRGB(255, 250, 135), -- Màu vàng chanh nhạt / vàng sáng
     TextWhite = Color3.fromRGB(255, 255, 255),
-    TextDim = Color3.fromRGB(170, 185, 180)
+    TextDim = Color3.fromRGB(170, 185, 180),
+    IconSilver = Color3.fromRGB(210, 225, 220),
+    DangerRed = Color3.fromRGB(255, 95, 105)
 }
 local MenuBlur = Instance.new("BlurEffect")
 MenuBlur.Name = "LonyBlur"
@@ -31,9 +42,14 @@ ScreenGui.Name = "LonyGUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.Parent = parentGui
+local mainGuiConnections = {}
+local function trackMainConn(conn)
+    table.insert(mainGuiConnections, conn)
+    return conn
+end
 local function MakeDraggable(dragHandle, targetFrame)
     local dragging, dragInput, dragStart, startPos
-    dragHandle.InputBegan:Connect(function(input)
+    trackMainConn(dragHandle.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             dragStart = input.Position
@@ -44,13 +60,13 @@ local function MakeDraggable(dragHandle, targetFrame)
                 end
             end)
         end
-    end)
-    dragHandle.InputChanged:Connect(function(input)
+    end))
+    trackMainConn(dragHandle.InputChanged:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
             dragInput = input
         end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
+    end))
+    trackMainConn(UserInputService.InputChanged:Connect(function(input)
         if input == dragInput and dragging then
             local delta = input.Position - dragStart
             targetFrame.Position = UDim2.new(
@@ -58,7 +74,7 @@ local function MakeDraggable(dragHandle, targetFrame)
                 startPos.Y.Scale, startPos.Y.Offset + delta.Y
             )
         end
-    end)
+    end))
 end
 local FloatBtn = Instance.new("ImageButton")
 FloatBtn.Name = "FloatingButton"
@@ -197,6 +213,7 @@ ContentArea.BackgroundTransparency = 1
 ContentArea.Parent = MainFrame
 local Tabs = {}
 local TabButtons = {}
+local tabCount = 0
 local function SwitchTab(tabName)
     for name, page in pairs(Tabs) do
         page.Visible = (name == tabName)
@@ -217,8 +234,10 @@ local function SwitchTab(tabName)
     end
 end
 local function CreateTab(name, isDefault)
+    tabCount = tabCount + 1
     local Btn = Instance.new("TextButton")
     Btn.Size = UDim2.new(0, 82, 0, 28)
+    Btn.LayoutOrder = tabCount
     Btn.BackgroundColor3 = Colors.MintNeon
     Btn.BackgroundTransparency = isDefault and 0 or 1
     Btn.Text = name
@@ -264,7 +283,10 @@ local function CreateTab(name, isDefault)
     return Page
 end
 local TabMain = CreateTab("Main", true)
-local function CreateMenuCheckbox(parentPage, labelText, order, onToggle)
+local TabMiss = CreateTab("Miss", false)
+local function CreateMenuCheckbox(parentPage, labelText, order, onToggle, customColor)
+    local activeColor = customColor or Colors.MintNeon
+    local activeBg = customColor and Color3.fromRGB(70, 68, 22) or Color3.fromRGB(0, 65, 50)
     local Row = Instance.new("Frame")
     Row.Size = UDim2.new(1, 0, 0, 24)
     Row.BackgroundTransparency = 1
@@ -281,14 +303,14 @@ local function CreateMenuCheckbox(parentPage, labelText, order, onToggle)
     BoxBtn.Parent = Row
     Instance.new("UICorner", BoxBtn).CornerRadius = UDim.new(0, 5)
     local BoxStroke = Instance.new("UIStroke")
-    BoxStroke.Color = Colors.MintNeon
+    BoxStroke.Color = activeColor
     BoxStroke.Thickness = 1.3
     BoxStroke.Parent = BoxBtn
     local CheckMark = Instance.new("TextLabel")
     CheckMark.Size = UDim2.new(1, 0, 1, 0)
     CheckMark.BackgroundTransparency = 1
     CheckMark.Text = "✓"
-    CheckMark.TextColor3 = Colors.MintNeon
+    CheckMark.TextColor3 = activeColor
     CheckMark.Font = Enum.Font.GothamBold
     CheckMark.TextSize = 15
     CheckMark.Visible = false
@@ -298,7 +320,7 @@ local function CreateMenuCheckbox(parentPage, labelText, order, onToggle)
     Label.Position = UDim2.fromOffset(30, 0)
     Label.BackgroundTransparency = 1
     Label.Text = labelText
-    Label.TextColor3 = Colors.TextWhite
+    Label.TextColor3 = activeColor
     Label.Font = Enum.Font.GothamBold
     Label.TextSize = 12
     Label.TextXAlignment = Enum.TextXAlignment.Left
@@ -313,7 +335,7 @@ local function CreateMenuCheckbox(parentPage, labelText, order, onToggle)
         state = newState
         CheckMark.Visible = state
         TweenService:Create(BoxBtn, TweenInfo.new(0.15), {
-            BackgroundColor3 = state and Color3.fromRGB(0, 65, 50) or Colors.HeaderBg
+            BackgroundColor3 = state and activeBg or Colors.HeaderBg
         }):Play()
     end
     ClickArea.MouseButton1Click:Connect(function()
@@ -329,6 +351,7 @@ local function StopFlyGuiSystem()
         FlyGuiCleanup = nil
     end
 end
+globalEnv.LonyGlobalCleanups.FlyGui = StopFlyGuiSystem
 local function StartFlyGuiSystem()
     StopFlyGuiSystem()
     local MIN_SPEED = 10
@@ -349,6 +372,7 @@ local function StartFlyGuiSystem()
     local linearVel
     local alignOri
     local connections = {}
+
     local function trackConn(conn)
         table.insert(connections, conn)
         return conn
@@ -402,7 +426,6 @@ local function StartFlyGuiSystem()
             end
         end))
     end
-
     local FlyFloatBtn = Instance.new("ImageButton")
     FlyFloatBtn.Name = "FloatingButton"
     FlyFloatBtn.Size = UDim2.new(0, 50, 0, 50)
@@ -575,7 +598,7 @@ local function StartFlyGuiSystem()
         Label.Position = UDim2.fromOffset(30, 0)
         Label.BackgroundTransparency = 1
         Label.Text = labelText
-        Label.TextColor3 = Colors.TextWhite
+        Label.TextColor3 = Colors.MintNeon
         Label.Font = Enum.Font.GothamBold
         Label.TextSize = 12
         Label.TextXAlignment = Enum.TextXAlignment.Left
@@ -591,9 +614,11 @@ local function StartFlyGuiSystem()
                 BackgroundColor3 = state and Color3.fromRGB(0, 65, 50) or Colors.HeaderBg
             }):Play()
         end
+
         ClickArea.MouseButton1Click:Connect(function()
             onToggle()
         end)
+
         return setVisual
     end
     local function CreateThinDivider(order)
@@ -666,7 +691,7 @@ local function StartFlyGuiSystem()
         TitleLabel.Position = UDim2.new(0.78, 6, 0, 0)
         TitleLabel.BackgroundTransparency = 1
         TitleLabel.Text = labelText
-        TitleLabel.TextColor3 = Colors.TextWhite
+        TitleLabel.TextColor3 = Colors.MintNeon
         TitleLabel.Font = Enum.Font.GothamBold
         TitleLabel.TextSize = 11
         TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -725,6 +750,7 @@ local function StartFlyGuiSystem()
         if alignOri then alignOri:Destroy(); alignOri = nil end
         if flyAttachment then flyAttachment:Destroy(); flyAttachment = nil end
     end
+
     local function stopFly()
         flying = false
         if flyConnection then
@@ -776,15 +802,12 @@ local function StartFlyGuiSystem()
             local cam = workspace.CurrentCamera
             local move = Vector3.zero
             local currentHumanoid = humanoid()
-
-            -- Safe Mode: bật noclip và tự kích hoạt bay lên khi máu <= ngưỡng.
             if safeMode and currentHumanoid and currentHumanoid.MaxHealth > 0 then
                 local healthPercent = (currentHumanoid.Health / currentHumanoid.MaxHealth) * 100
                 safeModeAscending = healthPercent <= healthThreshold
 
                 if safeModeAscending then
                     heldAltitude = math.max(heldAltitude or currentRoot.Position.Y, currentRoot.Position.Y)
-                    -- Giữ độ cao; nếu tụt xuống thì tiếp tục bay lên để lấy lại độ cao đã giữ.
                     if currentRoot.Position.Y < heldAltitude - 2 then
                         move = Vector3.yAxis * SAFE_ASCEND_SPEED
                     end
@@ -795,9 +818,7 @@ local function StartFlyGuiSystem()
                 safeModeAscending = false
                 heldAltitude = nil
             end
-
             if safeModeAscending then
-                -- Chế độ tự bay lên ưu tiên hơn điều khiển thông thường.
                 move = Vector3.yAxis * SAFE_ASCEND_SPEED
             else
                 if UserInputService:IsKeyDown(Enum.KeyCode.W) then move += cam.CFrame.LookVector end
@@ -810,7 +831,6 @@ local function StartFlyGuiSystem()
                     move = move.Unit * speed
                 end
             end
-
             linearVel.VectorVelocity = move
             alignOri.CFrame = cam.CFrame
         end)
@@ -857,6 +877,7 @@ local function StartFlyGuiSystem()
         end
     end)
     CreateThinDivider(2)
+
     CreateSliderWithInput("Speed", MIN_SPEED, MAX_SPEED, speed, 3, function(newSpeed)
         speed = newSpeed
     end)
@@ -864,13 +885,11 @@ local function StartFlyGuiSystem()
         if not enabled then return end
         if flying then stopFly() else startFly() end
     end)
-
     setSafeModeVisual = CreateCheckbox("Safe Mode", 5, function()
         safeMode = not safeMode
         setSafeModeVisual(safeMode)
 
         if safeMode then
-            -- Safe Mode tự bật Flight System, Fly và Noclip.
             if not enabled then
                 enabled = true
                 setSystemVisual(true)
@@ -883,11 +902,9 @@ local function StartFlyGuiSystem()
             setNoclip(false)
         end
     end)
-
     CreateSliderWithInput("HP Trigger %", 1, 100, healthThreshold, 6, function(value)
         healthThreshold = value
     end)
-
     local HintLabel = Instance.new("TextLabel")
     HintLabel.Size = UDim2.new(1, 0, 0, 18)
     HintLabel.BackgroundColor3 = Colors.HeaderBg
@@ -944,13 +961,1075 @@ local function StartFlyGuiSystem()
         if FlyBlur then FlyBlur:Destroy() end
     end
 end
-CreateMenuCheckbox(TabMain, "Fly Gui", 1, function(isEnabled)
+local LocationGuiCleanup = nil
+local function StopLocationGuiSystem()
+    if LocationGuiCleanup then
+        LocationGuiCleanup()
+        LocationGuiCleanup = nil
+    end
+end
+globalEnv.LonyGlobalCleanups.LocationGui = StopLocationGuiSystem
+local function StartLocationGuiSystem()
+    StopLocationGuiSystem()
+    for _, name in ipairs({"LocationGUI"}) do
+        if parentGui:FindFirstChild(name) then
+            parentGui[name]:Destroy()
+        end
+    end
+    if Lighting:FindFirstChild("LocationBlur") then
+        Lighting.LocationBlur:Destroy()
+    end
+    local locationSystemActive = true
+    local telemouseEnabled = false
+    local savedCoordsList = {}
+    local locConnections = {}
+    local function trackLocConn(conn)
+        table.insert(locConnections, conn)
+        return conn
+    end
+    local function character()
+        return player.Character
+    end
+    local function root()
+        local c = character()
+        return c and c:FindFirstChild("HumanoidRootPart")
+    end
+    local LocBlur = Instance.new("BlurEffect")
+    LocBlur.Name = "LocationBlur"
+    LocBlur.Size = 0
+    LocBlur.Parent = Lighting
+    local LocScreenGui = Instance.new("ScreenGui")
+    LocScreenGui.Name = "LocationGUI"
+    LocScreenGui.ResetOnSpawn = false
+    LocScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    LocScreenGui.Parent = parentGui
+    local function MakeLocDraggable(dragHandle, targetFrame)
+        local dragging, dragInput, dragStart, startPos
+        trackLocConn(dragHandle.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = true
+                dragStart = input.Position
+                startPos = targetFrame.Position
+                input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then
+                        dragging = false
+                    end
+                end)
+            end
+        end))
+        trackLocConn(dragHandle.InputChanged:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                dragInput = input
+            end
+        end))
+        trackLocConn(UserInputService.InputChanged:Connect(function(input)
+            if input == dragInput and dragging then
+                local delta = input.Position - dragStart
+                targetFrame.Position = UDim2.new(
+                    startPos.X.Scale, startPos.X.Offset + delta.X,
+                    startPos.Y.Scale, startPos.Y.Offset + delta.Y
+                )
+            end
+        end))
+    end
+    local function DrawCopyIcon(parent, scale)
+        scale = scale or 1
+        local Canvas = Instance.new("Frame")
+        Canvas.Name = "IconCanvas"
+        Canvas.Size = UDim2.fromOffset(math.floor(14 * scale), math.floor(14 * scale))
+        Canvas.Position = UDim2.new(0.5, 0, 0.5, 0)
+        Canvas.AnchorPoint = Vector2.new(0.5, 0.5)
+        Canvas.BackgroundTransparency = 1
+        Canvas.Parent = parent
+        local BackRect = Instance.new("Frame")
+        BackRect.Size = UDim2.fromOffset(math.floor(8 * scale), math.floor(10 * scale))
+        BackRect.Position = UDim2.fromOffset(math.floor(1 * scale), math.floor(3 * scale))
+        BackRect.BackgroundTransparency = 1
+        BackRect.ZIndex = 1
+        BackRect.Parent = Canvas
+        Instance.new("UICorner", BackRect).CornerRadius = UDim.new(0, math.max(2, math.floor(2.5 * scale)))
+        local BackStroke = Instance.new("UIStroke")
+        BackStroke.Color = Colors.IconSilver
+        BackStroke.Thickness = 1.15
+        BackStroke.Transparency = 0.15
+        BackStroke.Parent = BackRect
+        local FrontRect = Instance.new("Frame")
+        FrontRect.Size = UDim2.fromOffset(math.floor(8 * scale), math.floor(10 * scale))
+        FrontRect.Position = UDim2.fromOffset(math.floor(5 * scale), math.floor(1 * scale))
+        FrontRect.BackgroundColor3 = Colors.HeaderBg
+        FrontRect.BorderSizePixel = 0
+        FrontRect.ZIndex = 2
+        FrontRect.Parent = Canvas
+        Instance.new("UICorner", FrontRect).CornerRadius = UDim.new(0, math.max(2, math.floor(2.5 * scale)))
+        local FrontStroke = Instance.new("UIStroke")
+        FrontStroke.Color = Colors.MintNeon
+        FrontStroke.Thickness = 1.25
+        FrontStroke.Parent = FrontRect
+        return Canvas, FrontStroke
+    end
+    local function DrawTrashIcon(parent, scale, tintColor)
+        scale = scale or 1
+        local color = tintColor or Colors.IconSilver
+        local Canvas = Instance.new("Frame")
+        Canvas.Name = "IconCanvas"
+        Canvas.Size = UDim2.fromOffset(math.floor(14 * scale), math.floor(14 * scale))
+        Canvas.Position = UDim2.new(0.5, 0, 0.5, 0)
+        Canvas.AnchorPoint = Vector2.new(0.5, 0.5)
+        Canvas.BackgroundTransparency = 1
+        Canvas.Parent = parent
+        local Handle = Instance.new("Frame")
+        Handle.Size = UDim2.fromOffset(math.floor(4 * scale), math.floor(2 * scale))
+        Handle.Position = UDim2.new(0.5, 0, 0, math.floor(1 * scale))
+        Handle.AnchorPoint = Vector2.new(0.5, 0)
+        Handle.BackgroundTransparency = 1
+        Handle.Parent = Canvas
+        Instance.new("UICorner", Handle).CornerRadius = UDim.new(0, 2)
+        local HandleStroke = Instance.new("UIStroke")
+        HandleStroke.Color = color
+        HandleStroke.Thickness = 1.1
+        HandleStroke.Parent = Handle
+        local Lid = Instance.new("Frame")
+        Lid.Size = UDim2.fromOffset(math.floor(11 * scale), 1)
+        Lid.Position = UDim2.new(0.5, 0, 0, math.floor(3 * scale))
+        Lid.AnchorPoint = Vector2.new(0.5, 0)
+        Lid.BackgroundColor3 = color
+        Lid.BorderSizePixel = 0
+        Lid.Parent = Canvas
+        Instance.new("UICorner", Lid).CornerRadius = UDim.new(1, 0)
+        local Body = Instance.new("Frame")
+        Body.Size = UDim2.fromOffset(math.floor(8 * scale), math.floor(9 * scale))
+        Body.Position = UDim2.new(0.5, 0, 0, math.floor(4 * scale))
+        Body.AnchorPoint = Vector2.new(0.5, 0)
+        Body.BackgroundTransparency = 1
+        Body.Parent = Canvas
+        Instance.new("UICorner", Body).CornerRadius = UDim.new(0, 2)
+        local BodyStroke = Instance.new("UIStroke")
+        BodyStroke.Color = color
+        BodyStroke.Thickness = 1.15
+        BodyStroke.Parent = Body
+        local Bar1 = Instance.new("Frame")
+        Bar1.Size = UDim2.new(0, 1, 0.52, 0)
+        Bar1.Position = UDim2.new(0.36, 0, 0.24, 0)
+        Bar1.AnchorPoint = Vector2.new(0.5, 0)
+        Bar1.BackgroundColor3 = color
+        Bar1.BorderSizePixel = 0
+        Bar1.Parent = Body
+        local Bar2 = Instance.new("Frame")
+        Bar2.Size = UDim2.new(0, 1, 0.52, 0)
+        Bar2.Position = UDim2.new(0.64, 0, 0.24, 0)
+        Bar2.AnchorPoint = Vector2.new(0.5, 0)
+        Bar2.BackgroundColor3 = color
+        Bar2.BorderSizePixel = 0
+        Bar2.Parent = Body
+        local function SetColor(newCol)
+            HandleStroke.Color = newCol
+            Lid.BackgroundColor3 = newCol
+            BodyStroke.Color = newCol
+            Bar1.BackgroundColor3 = newCol
+            Bar2.BackgroundColor3 = newCol
+        end
+        return Canvas, SetColor
+    end
+    local function DrawPlusIcon(parent, scale, color)
+        scale = scale or 1
+        color = color or Colors.MintNeon
+        local Canvas = Instance.new("Frame")
+        Canvas.Size = UDim2.fromOffset(math.floor(12 * scale), math.floor(12 * scale))
+        Canvas.Position = UDim2.new(0.5, 0, 0.5, 0)
+        Canvas.AnchorPoint = Vector2.new(0.5, 0.5)
+        Canvas.BackgroundTransparency = 1
+        Canvas.Parent = parent
+        local HBar = Instance.new("Frame")
+        HBar.Size = UDim2.new(0.8, 0, 0, 1.5)
+        HBar.Position = UDim2.new(0.5, 0, 0.5, 0)
+        HBar.AnchorPoint = Vector2.new(0.5, 0.5)
+        HBar.BackgroundColor3 = color
+        HBar.BorderSizePixel = 0
+        HBar.Parent = Canvas
+        Instance.new("UICorner", HBar).CornerRadius = UDim.new(1, 0)
+        local VBar = Instance.new("Frame")
+        VBar.Size = UDim2.new(0, 1.5, 0.8, 0)
+        VBar.Position = UDim2.new(0.5, 0, 0.5, 0)
+        VBar.AnchorPoint = Vector2.new(0.5, 0.5)
+        VBar.BackgroundColor3 = color
+        VBar.BorderSizePixel = 0
+        VBar.Parent = Canvas
+        Instance.new("UICorner", VBar).CornerRadius = UDim.new(1, 0)
+    end
+    local LocFloatBtn = Instance.new("ImageButton")
+    LocFloatBtn.Name = "FloatingButton"
+    LocFloatBtn.Size = UDim2.new(0, 50, 0, 50)
+    LocFloatBtn.Position = UDim2.new(0, 25, 0.68, 0)
+    LocFloatBtn.BackgroundColor3 = Colors.BgDark
+    LocFloatBtn.BackgroundTransparency = 0.25
+    LocFloatBtn.AutoButtonColor = false
+    LocFloatBtn.Parent = LocScreenGui
+    Instance.new("UICorner", LocFloatBtn).CornerRadius = UDim.new(0, 10)
+    local LocFloatStroke = Instance.new("UIStroke")
+    LocFloatStroke.Color = Colors.MintNeon
+    LocFloatStroke.Thickness = 1.2
+    LocFloatStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    LocFloatStroke.Parent = LocFloatBtn
+    local LocInnerBorder = Instance.new("Frame")
+    LocInnerBorder.Size = UDim2.new(1, -4, 1, -4)
+    LocInnerBorder.Position = UDim2.new(0.5, 0, 0.5, 0)
+    LocInnerBorder.AnchorPoint = Vector2.new(0.5, 0.5)
+    LocInnerBorder.BackgroundTransparency = 1
+    LocInnerBorder.Parent = LocFloatBtn
+    Instance.new("UICorner", LocInnerBorder).CornerRadius = UDim.new(0, 8)
+    local LocInnerStroke = Instance.new("UIStroke")
+    LocInnerStroke.Color = Colors.MintNeon
+    LocInnerStroke.Thickness = 0.7
+    LocInnerStroke.Transparency = 0.45
+    LocInnerStroke.Parent = LocInnerBorder
+    local PinIcon = Instance.new("ImageLabel")
+    PinIcon.Size = UDim2.new(0.68, 0, 0.68, 0)
+    PinIcon.Position = UDim2.new(0.5, 0, 0.5, 0)
+    PinIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+    PinIcon.BackgroundTransparency = 1
+    PinIcon.ScaleType = Enum.ScaleType.Fit
+    PinIcon.ImageColor3 = Colors.MintNeon
+    PinIcon.Parent = LocFloatBtn
+    task.spawn(function()
+        local success, assetUrl = pcall(function()
+            if writefile and getcustomasset then
+                local fileName = "location_pin_icon.png"
+                if not isfile(fileName) then
+                    local imgData = game:HttpGet("https://img.icons8.com/ios-filled/250/ffffff/marker.png")
+                    writefile(fileName, imgData)
+                end
+                return getcustomasset(fileName)
+            end
+        end)
+        if PinIcon and PinIcon.Parent then
+            PinIcon.Image = (success and assetUrl) or "rbxassetid://6031094678"
+        end
+    end)
+    MakeLocDraggable(LocFloatBtn, LocFloatBtn)
+    local LocMainFrame = Instance.new("Frame")
+    LocMainFrame.Name = "MainFrame"
+    LocMainFrame.Size = UDim2.fromOffset(315, 310)
+    LocMainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    LocMainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    LocMainFrame.BackgroundColor3 = Colors.BgDark
+    LocMainFrame.BackgroundTransparency = 0.25
+    LocMainFrame.BorderSizePixel = 0
+    LocMainFrame.Parent = LocScreenGui
+    local LocMainScale = Instance.new("UIScale")
+    LocMainScale.Scale = 1
+    LocMainScale.Parent = LocMainFrame
+    Instance.new("UICorner", LocMainFrame).CornerRadius = UDim.new(0, 10)
+    local LocMainStroke = Instance.new("UIStroke")
+    LocMainStroke.Color = Colors.MintNeon
+    LocMainStroke.Thickness = 1
+    LocMainStroke.Transparency = 0.15
+    LocMainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    LocMainStroke.Parent = LocMainFrame
+    local LocTopBar = Instance.new("Frame")
+    LocTopBar.Size = UDim2.new(1, 0, 0, 28)
+    LocTopBar.BackgroundColor3 = Colors.HeaderBg
+    LocTopBar.BackgroundTransparency = 0.2
+    LocTopBar.BorderSizePixel = 0
+    LocTopBar.Parent = LocMainFrame
+    Instance.new("UICorner", LocTopBar).CornerRadius = UDim.new(0, 10)
+    local LocTopTitle = Instance.new("TextLabel")
+    LocTopTitle.Size = UDim2.new(1, 0, 1, 0)
+    LocTopTitle.BackgroundTransparency = 1
+    LocTopTitle.Text = "Location"
+    LocTopTitle.TextColor3 = Colors.TextWhite
+    LocTopTitle.Font = Enum.Font.GothamBold
+    LocTopTitle.TextSize = 13
+    LocTopTitle.Parent = LocTopBar
+    MakeLocDraggable(LocTopBar, LocMainFrame)
+    local LocHeaderLine = Instance.new("Frame")
+    LocHeaderLine.Size = UDim2.new(1, 0, 0, 1)
+    LocHeaderLine.Position = UDim2.new(0, 0, 0, 28)
+    LocHeaderLine.BackgroundColor3 = Colors.MintNeon
+    LocHeaderLine.BackgroundTransparency = 0.35
+    LocHeaderLine.BorderSizePixel = 0
+    LocHeaderLine.ZIndex = 3
+    LocHeaderLine.Parent = LocMainFrame
+    local LocInnerBox = Instance.new("Frame")
+    LocInnerBox.Size = UDim2.new(1, -16, 1, -43)
+    LocInnerBox.Position = UDim2.fromOffset(8, 36)
+    LocInnerBox.BackgroundTransparency = 1
+    LocInnerBox.Parent = LocMainFrame
+    Instance.new("UICorner", LocInnerBox).CornerRadius = UDim.new(0, 8)
+    local LocInnerBoxStroke = Instance.new("UIStroke")
+    LocInnerBoxStroke.Color = Colors.MintNeon
+    LocInnerBoxStroke.Thickness = 0.9
+    LocInnerBoxStroke.Transparency = 0.4
+    LocInnerBoxStroke.Parent = LocInnerBox
+    local LocContentList = Instance.new("Frame")
+    LocContentList.Size = UDim2.new(1, -20, 1, -16)
+    LocContentList.Position = UDim2.fromOffset(10, 8)
+    LocContentList.BackgroundTransparency = 1
+    LocContentList.Parent = LocInnerBox
+    local LocListLayout = Instance.new("UIListLayout")
+    LocListLayout.Padding = UDim.new(0, 7)
+    LocListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    LocListLayout.Parent = LocContentList
+    local function CreateBaseSquareBtn(parent, pos, size)
+        local Btn = Instance.new("TextButton")
+        Btn.Size = size
+        Btn.Position = pos
+        Btn.BackgroundColor3 = Colors.HeaderBg
+        Btn.BackgroundTransparency = 0.15
+        Btn.Text = ""
+        Btn.TextColor3 = Colors.MintNeon
+        Btn.Font = Enum.Font.GothamBold
+        Btn.TextSize = 12
+        Btn.AutoButtonColor = false
+        Btn.Parent = parent
+        Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 5)
+        local Stroke = Instance.new("UIStroke")
+        Stroke.Color = Colors.MintNeon
+        Stroke.Thickness = 0.9
+        Stroke.Transparency = 0.35
+        Stroke.Parent = Btn
+        return Btn, Stroke
+    end
+    local function FlashCopied(btn, iconCanvas)
+        TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(0, 75, 58)}):Play()
+        if iconCanvas then iconCanvas.Visible = false end
+        btn.Text = "✓"
+        task.delay(0.65, function()
+            if btn and btn.Parent then
+                btn.Text = ""
+                if iconCanvas then iconCanvas.Visible = true end
+                TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Colors.HeaderBg}):Play()
+            end
+        end)
+    end
+    local TopRow = Instance.new("Frame")
+    TopRow.Size = UDim2.new(1, 0, 0, 26)
+    TopRow.BackgroundTransparency = 1
+    TopRow.LayoutOrder = 1
+    TopRow.Parent = LocContentList
+    local PosBox = Instance.new("Frame")
+    PosBox.Size = UDim2.new(1, -58, 1, 0)
+    PosBox.BackgroundColor3 = Colors.HeaderBg
+    PosBox.BackgroundTransparency = 0.2
+    PosBox.Parent = TopRow
+    Instance.new("UICorner", PosBox).CornerRadius = UDim.new(0, 5)
+    local PosStroke = Instance.new("UIStroke")
+    PosStroke.Color = Colors.MintNeon
+    PosStroke.Thickness = 0.9
+    PosStroke.Transparency = 0.35
+    PosStroke.Parent = PosBox
+    local PosLabel = Instance.new("TextLabel")
+    PosLabel.Size = UDim2.new(1, -8, 1, 0)
+    PosLabel.Position = UDim2.fromOffset(4, 0)
+    PosLabel.BackgroundTransparency = 1
+    PosLabel.Text = "X: 0 | Y: 0 | Z: 0"
+    PosLabel.TextColor3 = Colors.MintNeon
+    PosLabel.Font = Enum.Font.GothamBold
+    PosLabel.TextSize = 11
+    PosLabel.Parent = PosBox
+    local CopyCurrentBtn = CreateBaseSquareBtn(TopRow, UDim2.new(1, -53, 0, 0), UDim2.fromOffset(24, 26))
+    local CopyCurrentCanvas = DrawCopyIcon(CopyCurrentBtn, 1)
+    local AddLocationBtn = CreateBaseSquareBtn(TopRow, UDim2.new(1, -24, 0, 0), UDim2.fromOffset(24, 26))
+    DrawPlusIcon(AddLocationBtn, 1, Colors.MintNeon)
+    CopyCurrentBtn.MouseButton1Click:Connect(function()
+        local r = root()
+        if r and setclipboard then
+            local p = r.Position
+            setclipboard(string.format("%d, %d, %d", math.floor(p.X), math.floor(p.Y), math.floor(p.Z)))
+            FlashCopied(CopyCurrentBtn, CopyCurrentCanvas)
+        end
+    end)
+    local StorageBox = Instance.new("Frame")
+    StorageBox.Size = UDim2.new(1, 0, 0, 152)
+    StorageBox.BackgroundColor3 = Colors.HeaderBg
+    StorageBox.BackgroundTransparency = 0.35
+    StorageBox.LayoutOrder = 2
+    StorageBox.Parent = LocContentList
+    Instance.new("UICorner", StorageBox).CornerRadius = UDim.new(0, 6)
+    local StorageStroke = Instance.new("UIStroke")
+    StorageStroke.Color = Colors.MintNeon
+    StorageStroke.Thickness = 0.9
+    StorageStroke.Transparency = 0.4
+    StorageStroke.Parent = StorageBox
+    local StorageHeader = Instance.new("Frame")
+    StorageHeader.Size = UDim2.new(1, 0, 0, 26)
+    StorageHeader.BackgroundColor3 = Colors.HeaderBg
+    StorageHeader.BackgroundTransparency = 0.2
+    StorageHeader.Parent = StorageBox
+    Instance.new("UICorner", StorageHeader).CornerRadius = UDim.new(0, 6)
+    local StorageTitle = Instance.new("TextLabel")
+    StorageTitle.Size = UDim2.new(1, -60, 1, 0)
+    StorageTitle.Position = UDim2.fromOffset(8, 0)
+    StorageTitle.BackgroundTransparency = 1
+    StorageTitle.Text = "Saved Coordinates (0)"
+    StorageTitle.TextColor3 = Colors.TextDim
+    StorageTitle.Font = Enum.Font.GothamBold
+    StorageTitle.TextSize = 10
+    StorageTitle.TextXAlignment = Enum.TextXAlignment.Left
+    StorageTitle.Parent = StorageHeader
+    local CopyAllBtn = CreateBaseSquareBtn(StorageHeader, UDim2.new(1, -46, 0.5, -10), UDim2.fromOffset(20, 20))
+    local CopyAllCanvas = DrawCopyIcon(CopyAllBtn, 0.86)
+    local ClearAllBtn, ClearAllStroke = CreateBaseSquareBtn(StorageHeader, UDim2.new(1, -23, 0.5, -10), UDim2.fromOffset(20, 20))
+    local _, SetClearAllColor = DrawTrashIcon(ClearAllBtn, 0.86, Colors.IconSilver)
+    ClearAllBtn.MouseEnter:Connect(function()
+        SetClearAllColor(Colors.DangerRed)
+        ClearAllStroke.Color = Colors.DangerRed
+    end)
+    ClearAllBtn.MouseLeave:Connect(function()
+        SetClearAllColor(Colors.IconSilver)
+        ClearAllStroke.Color = Colors.MintNeon
+    end)
+    local SubDivider = Instance.new("Frame")
+    SubDivider.Size = UDim2.new(1, 0, 0, 1)
+    SubDivider.Position = UDim2.new(0, 0, 0, 26)
+    SubDivider.BackgroundColor3 = Colors.MintNeon
+    SubDivider.BackgroundTransparency = 0.55
+    SubDivider.BorderSizePixel = 0
+    SubDivider.Parent = StorageBox
+    local CoordScroll = Instance.new("ScrollingFrame")
+    CoordScroll.Size = UDim2.new(1, -10, 1, -32)
+    CoordScroll.Position = UDim2.fromOffset(5, 29)
+    CoordScroll.BackgroundTransparency = 1
+    CoordScroll.BorderSizePixel = 0
+    CoordScroll.ScrollBarThickness = 2
+    CoordScroll.ScrollBarImageColor3 = Colors.MintNeon
+    CoordScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+    CoordScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    CoordScroll.Parent = StorageBox
+    local ScrollLayout = Instance.new("UIListLayout")
+    ScrollLayout.Padding = UDim.new(0, 5)
+    ScrollLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    ScrollLayout.Parent = CoordScroll
+    local function UpdateStorageCount()
+        StorageTitle.Text = string.format("Saved Coordinates (%d)", #savedCoordsList)
+    end
+    local function AddCoordinateEntry(vec3)
+        local x, y, z = math.floor(vec3.X), math.floor(vec3.Y), math.floor(vec3.Z)
+        local coordString = string.format("%d, %d, %d", x, y, z)
+        local ItemRow = Instance.new("Frame")
+        ItemRow.Size = UDim2.new(1, -4, 0, 24)
+        ItemRow.BackgroundColor3 = Colors.BgDark
+        ItemRow.BackgroundTransparency = 0.2
+        ItemRow.Parent = CoordScroll
+        Instance.new("UICorner", ItemRow).CornerRadius = UDim.new(0, 5)
+        local ItemStroke = Instance.new("UIStroke")
+        ItemStroke.Color = Colors.MintNeon
+        ItemStroke.Thickness = 0.8
+        ItemStroke.Transparency = 0.5
+        ItemStroke.Parent = ItemRow
+        local entryData = {
+            frame = ItemRow,
+            coordStr = coordString,
+            vector = Vector3.new(x, y, z)
+        }
+        table.insert(savedCoordsList, entryData)
+        UpdateStorageCount()
+        local CoordTeleportBtn = Instance.new("TextButton")
+        CoordTeleportBtn.Size = UDim2.new(1, -50, 1, 0)
+        CoordTeleportBtn.Position = UDim2.fromOffset(7, 0)
+        CoordTeleportBtn.BackgroundTransparency = 1
+        CoordTeleportBtn.Text = string.format("X: %d | Y: %d | Z: %d", x, y, z)
+        CoordTeleportBtn.TextColor3 = Colors.TextWhite
+        CoordTeleportBtn.Font = Enum.Font.GothamMedium
+        CoordTeleportBtn.TextSize = 10
+        CoordTeleportBtn.TextXAlignment = Enum.TextXAlignment.Left
+        CoordTeleportBtn.Parent = ItemRow
+        CoordTeleportBtn.MouseButton1Click:Connect(function()
+            local r = root()
+            if r then
+                r.CFrame = CFrame.new(entryData.vector)
+                CoordTeleportBtn.TextColor3 = Colors.MintNeon
+                task.delay(0.25, function()
+                    if CoordTeleportBtn and CoordTeleportBtn.Parent then
+                        CoordTeleportBtn.TextColor3 = Colors.TextWhite
+                    end
+                end)
+            end
+        end)
+        local ItemCopyBtn = CreateBaseSquareBtn(ItemRow, UDim2.new(1, -43, 0.5, -9), UDim2.fromOffset(18, 18))
+        local ItemCopyCanvas = DrawCopyIcon(ItemCopyBtn, 0.78)
+        local ItemDelBtn, ItemDelStroke = CreateBaseSquareBtn(ItemRow, UDim2.new(1, -21, 0.5, -9), UDim2.fromOffset(18, 18))
+        local _, SetItemTrashColor = DrawTrashIcon(ItemDelBtn, 0.78, Colors.IconSilver)
+        ItemDelBtn.MouseEnter:Connect(function()
+            SetItemTrashColor(Colors.DangerRed)
+            ItemDelStroke.Color = Colors.DangerRed
+        end)
+        ItemDelBtn.MouseLeave:Connect(function()
+            SetItemTrashColor(Colors.IconSilver)
+            ItemDelStroke.Color = Colors.MintNeon
+        end)
+        ItemCopyBtn.MouseButton1Click:Connect(function()
+            if setclipboard then
+                setclipboard(entryData.coordStr)
+                FlashCopied(ItemCopyBtn, ItemCopyCanvas)
+            end
+        end)
+        ItemDelBtn.MouseButton1Click:Connect(function()
+            for i, v in ipairs(savedCoordsList) do
+                if v == entryData then
+                    table.remove(savedCoordsList, i)
+                    break
+                end
+            end
+            ItemRow:Destroy()
+            UpdateStorageCount()
+        end)
+    end
+    AddLocationBtn.MouseButton1Click:Connect(function()
+        TweenService:Create(AddLocationBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(0, 75, 58)}):Play()
+        task.delay(0.12, function()
+            if AddLocationBtn and AddLocationBtn.Parent then
+                TweenService:Create(AddLocationBtn, TweenInfo.new(0.15), {BackgroundColor3 = Colors.HeaderBg}):Play()
+            end
+        end)
+        local r = root()
+        if r then
+            AddCoordinateEntry(r.Position)
+        end
+    end)
+    CopyAllBtn.MouseButton1Click:Connect(function()
+        if #savedCoordsList == 0 or not setclipboard then return end
+        local lines = {}
+        for _, item in ipairs(savedCoordsList) do
+            table.insert(lines, item.coordStr)
+        end
+        setclipboard(table.concat(lines, "\n"))
+        FlashCopied(CopyAllBtn, CopyAllCanvas)
+    end)
+    ClearAllBtn.MouseButton1Click:Connect(function()
+        TweenService:Create(ClearAllBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(80, 25, 30)}):Play()
+        task.delay(0.15, function()
+            if ClearAllBtn and ClearAllBtn.Parent then
+                TweenService:Create(ClearAllBtn, TweenInfo.new(0.15), {BackgroundColor3 = Colors.HeaderBg}):Play()
+            end
+        end)
+        for _, item in ipairs(savedCoordsList) do
+            if item.frame then
+                item.frame:Destroy()
+            end
+        end
+        table.clear(savedCoordsList)
+        UpdateStorageCount()
+    end)
+    local TeleRow = Instance.new("Frame")
+    TeleRow.Size = UDim2.new(1, 0, 0, 26)
+    TeleRow.BackgroundTransparency = 1
+    TeleRow.LayoutOrder = 3
+    TeleRow.Parent = LocContentList
+    local BoxBtn = Instance.new("TextButton")
+    BoxBtn.Size = UDim2.fromOffset(20, 20)
+    BoxBtn.Position = UDim2.new(0, 0, 0.5, 0)
+    BoxBtn.AnchorPoint = Vector2.new(0, 0.5)
+    BoxBtn.BackgroundColor3 = Colors.HeaderBg
+    BoxBtn.BackgroundTransparency = 0.2
+    BoxBtn.Text = ""
+    BoxBtn.AutoButtonColor = false
+    BoxBtn.Parent = TeleRow
+    Instance.new("UICorner", BoxBtn).CornerRadius = UDim.new(0, 5)
+    local BoxStroke = Instance.new("UIStroke")
+    BoxStroke.Color = Colors.MintNeon
+    BoxStroke.Thickness = 1
+    BoxStroke.Transparency = 0.2
+    BoxStroke.Parent = BoxBtn
+    local CheckMark = Instance.new("TextLabel")
+    CheckMark.Size = UDim2.new(1, 0, 1, 0)
+    CheckMark.BackgroundTransparency = 1
+    CheckMark.Text = "✓"
+    CheckMark.TextColor3 = Colors.MintNeon
+    CheckMark.Font = Enum.Font.GothamBold
+    CheckMark.TextSize = 14
+    CheckMark.Visible = false
+    CheckMark.Parent = BoxBtn
+    local TeleLabel = Instance.new("TextLabel")
+    TeleLabel.Size = UDim2.new(1, -28, 1, 0)
+    TeleLabel.Position = UDim2.fromOffset(28, 0)
+    TeleLabel.BackgroundTransparency = 1
+    TeleLabel.Text = "Telemouse (Key: R)"
+    TeleLabel.TextColor3 = Colors.TextWhite
+    TeleLabel.Font = Enum.Font.GothamBold
+    TeleLabel.TextSize = 12
+    TeleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TeleLabel.Parent = TeleRow
+    local TeleClickArea = Instance.new("TextButton")
+    TeleClickArea.Size = UDim2.new(1, 0, 1, 0)
+    TeleClickArea.BackgroundTransparency = 1
+    TeleClickArea.Text = ""
+    TeleClickArea.Parent = TeleRow
+    TeleClickArea.MouseButton1Click:Connect(function()
+        telemouseEnabled = not telemouseEnabled
+        CheckMark.Visible = telemouseEnabled
+        TweenService:Create(BoxBtn, TweenInfo.new(0.15), {
+            BackgroundColor3 = telemouseEnabled and Color3.fromRGB(0, 65, 50) or Colors.HeaderBg
+        }):Play()
+    end)
+    local HintLabel = Instance.new("TextLabel")
+    HintLabel.Size = UDim2.new(1, 0, 0, 18)
+    HintLabel.BackgroundColor3 = Colors.HeaderBg
+    HintLabel.BackgroundTransparency = 0.35
+    HintLabel.Text = "Click saved coord to TP | Press R to Tele Mouse"
+    HintLabel.TextColor3 = Colors.TextDim
+    HintLabel.Font = Enum.Font.GothamMedium
+    HintLabel.TextSize = 10
+    HintLabel.LayoutOrder = 4
+    HintLabel.Parent = LocContentList
+    Instance.new("UICorner", HintLabel).CornerRadius = UDim.new(0, 4)
+    trackLocConn(UserInputService.InputBegan:Connect(function(input, processed)
+        if processed then return end
+        if not locationSystemActive or not telemouseEnabled or not LocScreenGui or not LocScreenGui.Parent then
+            return
+        end
+        if input.KeyCode == Enum.KeyCode.R then
+            local r = root()
+            if r and mouse.Hit then
+                r.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 3, 0))
+            end
+        end
+    end))
+    trackLocConn(RunService.RenderStepped:Connect(function()
+        if not locationSystemActive or not LocScreenGui or not LocScreenGui.Parent then return end
+        local r = root()
+        if r then
+            local p = r.Position
+            PosLabel.Text = string.format("X: %d | Y: %d | Z: %d", math.floor(p.X), math.floor(p.Y), math.floor(p.Z))
+        else
+            PosLabel.Text = "X: - | Y: - | Z: -"
+        end
+    end))
+    local isLocMenuOpen = true
+    LocFloatBtn.MouseButton1Click:Connect(function()
+        isLocMenuOpen = not isLocMenuOpen
+        if isLocMenuOpen then
+            LocMainFrame.Visible = true
+            LocBlur.Size = 12
+            TweenService:Create(LocBlur, TweenInfo.new(0.3), {Size = 0}):Play()
+            TweenService:Create(LocMainScale, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
+            TweenService:Create(LocFloatStroke, TweenInfo.new(0.2), {Color = Colors.MintNeon}):Play()
+            TweenService:Create(PinIcon, TweenInfo.new(0.2), {ImageColor3 = Colors.MintNeon}):Play()
+        else
+            TweenService:Create(LocMainScale, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Scale = 0}):Play()
+            TweenService:Create(LocFloatStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(100, 120, 115)}):Play()
+            TweenService:Create(PinIcon, TweenInfo.new(0.2), {ImageColor3 = Color3.fromRGB(130, 150, 145)}):Play()
+            task.delay(0.16, function()
+                if not isLocMenuOpen and LocMainFrame and LocMainFrame.Parent then
+                    LocMainFrame.Visible = false
+                end
+            end)
+        end
+    end)
+    LocationGuiCleanup = function()
+        locationSystemActive = false
+        telemouseEnabled = false
+        table.clear(savedCoordsList)
+        for _, conn in ipairs(locConnections) do
+            if conn and conn.Connected then
+                conn:Disconnect()
+            end
+        end
+        table.clear(locConnections)
+        if LocScreenGui then LocScreenGui:Destroy(); LocScreenGui = nil end
+        if LocBlur then LocBlur:Destroy(); LocBlur = nil end
+    end
+end
+CreateMenuCheckbox(TabMiss, "Fly Gui", 1, function(isEnabled)
     if isEnabled then
         StartFlyGuiSystem()
     else
         StopFlyGuiSystem()
     end
-end)
+end, Colors.LemonYellow)
+local toolCheckEnabled = false
+local holdingCheck = false
+local checkRenderConn = nil
+local checkInputBeganConn = nil
+local checkInputEndedConn = nil
+local CheckTooltip = Instance.new("Frame")
+CheckTooltip.Name = "ToolCheckTooltip"
+CheckTooltip.Size = UDim2.fromOffset(240, 62)
+CheckTooltip.BackgroundColor3 = Colors.HeaderBg
+CheckTooltip.BackgroundTransparency = 0.1
+CheckTooltip.Visible = false
+CheckTooltip.ZIndex = 50
+CheckTooltip.Parent = ScreenGui
+Instance.new("UICorner", CheckTooltip).CornerRadius = UDim.new(0, 7)
+local TooltipStroke = Instance.new("UIStroke")
+TooltipStroke.Color = Colors.LemonYellow
+TooltipStroke.Thickness = 1.4
+TooltipStroke.Parent = CheckTooltip
+local TooltipTitle = Instance.new("TextLabel")
+TooltipTitle.Size = UDim2.new(1, -16, 0, 22)
+TooltipTitle.Position = UDim2.fromOffset(8, 4)
+TooltipTitle.BackgroundTransparency = 1
+TooltipTitle.Text = "Part: None"
+TooltipTitle.TextColor3 = Colors.LemonYellow
+TooltipTitle.Font = Enum.Font.GothamBold
+TooltipTitle.TextSize = 13
+TooltipTitle.TextXAlignment = Enum.TextXAlignment.Left
+TooltipTitle.TextTruncate = Enum.TextTruncate.AtEnd
+TooltipTitle.ZIndex = 51
+TooltipTitle.Parent = CheckTooltip
+local TooltipSub = Instance.new("TextLabel")
+TooltipSub.Size = UDim2.new(1, -16, 0, 16)
+TooltipSub.Position = UDim2.fromOffset(8, 25)
+TooltipSub.BackgroundTransparency = 1
+TooltipSub.Text = "Object: None"
+TooltipSub.TextColor3 = Colors.MintNeon
+TooltipSub.Font = Enum.Font.GothamBold
+TooltipSub.TextSize = 11
+TooltipSub.TextXAlignment = Enum.TextXAlignment.Left
+TooltipSub.TextTruncate = Enum.TextTruncate.AtEnd
+TooltipSub.ZIndex = 51
+TooltipSub.Parent = CheckTooltip
+local TooltipPath = Instance.new("TextLabel")
+TooltipPath.Size = UDim2.new(1, -16, 0, 15)
+TooltipPath.Position = UDim2.fromOffset(8, 42)
+TooltipPath.BackgroundTransparency = 1
+TooltipPath.Text = "Path: workspace"
+TooltipPath.TextColor3 = Colors.TextDim
+TooltipPath.Font = Enum.Font.GothamMedium
+TooltipPath.TextSize = 10
+TooltipPath.TextXAlignment = Enum.TextXAlignment.Left
+TooltipPath.TextTruncate = Enum.TextTruncate.AtEnd
+TooltipPath.ZIndex = 51
+TooltipPath.Parent = CheckTooltip
+local CheckHighlight = Instance.new("Highlight")
+CheckHighlight.Name = "LonyPartCheckHighlight"
+CheckHighlight.FillColor = Colors.LemonYellow
+CheckHighlight.FillTransparency = 0.65
+CheckHighlight.OutlineColor = Colors.LemonYellow
+CheckHighlight.OutlineTransparency = 0
+CheckHighlight.Enabled = false
+CheckHighlight.Parent = ScreenGui
+local function UpdateToolCheckPart()
+    if not toolCheckEnabled or not holdingCheck then
+        CheckTooltip.Visible = false
+        CheckHighlight.Enabled = false
+        CheckHighlight.Adornee = nil
+        return
+    end
+    local mousePos = UserInputService:GetMouseLocation()
+    CheckTooltip.Position = UDim2.fromOffset(mousePos.X + 16, mousePos.Y + 16)
+    local target = mouse.Target
+    if target then
+        CheckTooltip.Visible = true
+        CheckHighlight.Adornee = target
+        CheckHighlight.Enabled = true
+        local toolAncestor = target:FindFirstAncestorWhichIsA("Tool")
+        local modelAncestor = target:FindFirstAncestorWhichIsA("Model")
+        TooltipTitle.Text = "Tên khối: " .. target.Name .. " [" .. target.ClassName .. "]"
+        if toolAncestor then
+            TooltipSub.Text = "Item / Tool: " .. toolAncestor.Name
+        elseif modelAncestor and modelAncestor ~= workspace then
+            TooltipSub.Text = "Model / Object: " .. modelAncestor.Name
+        else
+            TooltipSub.Text = "Parent: " .. (target.Parent and target.Parent.Name or "None")
+        end
+        TooltipPath.Text = target:GetFullName()
+    else
+        CheckTooltip.Visible = true
+        CheckHighlight.Enabled = false
+        CheckHighlight.Adornee = nil
+        TooltipTitle.Text = "Tên khối: (Không trúng vật thể)"
+        TooltipSub.Text = "Hãy di chuột vào khối hoặc Item"
+        TooltipPath.Text = ""
+    end
+end
+local function ToggleToolCheckPart(isEnabled)
+    toolCheckEnabled = isEnabled
+    holdingCheck = false
+    CheckTooltip.Visible = false
+    CheckHighlight.Enabled = false
+    CheckHighlight.Adornee = nil
+    if checkRenderConn then checkRenderConn:Disconnect(); checkRenderConn = nil end
+    if checkInputBeganConn then checkInputBeganConn:Disconnect(); checkInputBeganConn = nil end
+    if checkInputEndedConn then checkInputEndedConn:Disconnect(); checkInputEndedConn = nil end
+    if isEnabled then
+        checkInputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+            if gameProcessed then return end
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                holdingCheck = true
+                UpdateToolCheckPart()
+            end
+        end)
+        checkInputEndedConn = UserInputService.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                holdingCheck = false
+                CheckTooltip.Visible = false
+                CheckHighlight.Enabled = false
+                CheckHighlight.Adornee = nil
+            end
+        end)
+        checkRenderConn = RunService.RenderStepped:Connect(function()
+            if holdingCheck then
+                UpdateToolCheckPart()
+            end
+        end)
+    end
+end
+globalEnv.LonyGlobalCleanups.ToolCheckPart = function() ToggleToolCheckPart(false) end
+CreateMenuCheckbox(TabMiss, "ToolCheckPart", 2, function(isEnabled)
+    ToggleToolCheckPart(isEnabled)
+end, Colors.LemonYellow)
+CreateMenuCheckbox(TabMiss, "Location", 3, function(isEnabled)
+    if isEnabled then
+        StartLocationGuiSystem()
+    else
+        StopLocationGuiSystem()
+    end
+end, Colors.LemonYellow)
+local missNoclipConn = nil
+local missSavedCollisions = {}
+local function ToggleMissNoclip(isEnabled)
+    if missNoclipConn then
+        missNoclipConn:Disconnect()
+        missNoclipConn = nil
+    end
+    if isEnabled then
+        missNoclipConn = RunService.Stepped:Connect(function()
+            local c = player.Character
+            if not c then return end
+            for _, part in ipairs(c:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    if missSavedCollisions[part] == nil then
+                        missSavedCollisions[part] = part.CanCollide
+                    end
+                    part.CanCollide = false
+                end
+            end
+        end)
+    else
+        for part, oldState in pairs(missSavedCollisions) do
+            if part and part.Parent then
+                part.CanCollide = oldState
+            end
+        end
+        table.clear(missSavedCollisions)
+    end
+end
+globalEnv.LonyGlobalCleanups.MissNoclip = function() ToggleMissNoclip(false) end
+trackMainConn(player.CharacterAdded:Connect(function()
+    table.clear(missSavedCollisions)
+end))
+CreateMenuCheckbox(TabMiss, "Noclip", 4, function(isEnabled)
+    ToggleMissNoclip(isEnabled)
+end, Colors.MintNeon)
+local infJumpConn = nil
+local function ToggleInfJump(isEnabled)
+    if infJumpConn then
+        infJumpConn:Disconnect()
+        infJumpConn = nil
+    end
+    if isEnabled then
+        infJumpConn = UserInputService.JumpRequest:Connect(function()
+            local c = player.Character
+            local h = c and c:FindFirstChildOfClass("Humanoid")
+            if h then
+                h:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end)
+    end
+end
+globalEnv.LonyGlobalCleanups.InfJump = function() ToggleInfJump(false) end
+CreateMenuCheckbox(TabMiss, "InfJump", 5, function(isEnabled)
+    ToggleInfJump(isEnabled)
+end, Colors.MintNeon)
+local espPlayerEnabled = false
+local playerEspBillboards = {}
+local playerEspConnections = {}
+local function ClearPlayerESP(targetPlayer)
+    if playerEspBillboards[targetPlayer] then
+        playerEspBillboards[targetPlayer]:Destroy()
+        playerEspBillboards[targetPlayer] = nil
+    end
+    if playerEspConnections[targetPlayer] then
+        for _, conn in ipairs(playerEspConnections[targetPlayer]) do
+            if conn.Connected then conn:Disconnect() end
+        end
+        playerEspConnections[targetPlayer] = nil
+    end
+end
+local function CreatePlayerESP(targetPlayer)
+    if targetPlayer == player then return end
+    ClearPlayerESP(targetPlayer)
+    playerEspConnections[targetPlayer] = {}
+    local function SetupCharacterESP(char)
+        if not espPlayerEnabled or not char then return end
+        local head = char:WaitForChild("Head", 5) or char:WaitForChild("HumanoidRootPart", 5)
+        local hum = char:WaitForChild("Humanoid", 5)
+        if not head or not hum or not espPlayerEnabled then return end
+        if playerEspBillboards[targetPlayer] then
+            playerEspBillboards[targetPlayer]:Destroy()
+        end
+        local bgui = Instance.new("BillboardGui")
+        bgui.Name = "LonyPlayerESP"
+        bgui.Adornee = head
+        bgui.Size = UDim2.new(0, 180, 0, 42)
+        bgui.StudsOffset = Vector3.new(0, 2.8, 0)
+        bgui.AlwaysOnTop = true
+        bgui.Parent = ScreenGui
+        local nameLbl = Instance.new("TextLabel")
+        nameLbl.Size = UDim2.new(1, 0, 0.5, 0)
+        nameLbl.BackgroundTransparency = 1
+        nameLbl.Text = targetPlayer.Name
+        nameLbl.TextColor3 = Colors.MintNeon
+        nameLbl.TextStrokeTransparency = 0.2
+        nameLbl.TextStrokeColor3 = Colors.HeaderBg
+        nameLbl.Font = Enum.Font.GothamBold
+        nameLbl.TextSize = 13
+        nameLbl.Parent = bgui
+        local hpLbl = Instance.new("TextLabel")
+        hpLbl.Size = UDim2.new(1, 0, 0.5, 0)
+        hpLbl.Position = UDim2.new(0, 0, 0.5, 0)
+        hpLbl.BackgroundTransparency = 1
+        hpLbl.TextStrokeTransparency = 0.2
+        hpLbl.TextStrokeColor3 = Colors.HeaderBg
+        hpLbl.Font = Enum.Font.GothamBold
+        hpLbl.TextSize = 12
+        hpLbl.Parent = bgui
+        local function UpdateHealth()
+            if hum and hum.Parent then
+                local hp = math.floor(hum.Health + 0.5)
+                local maxHp = math.floor(hum.MaxHealth + 0.5)
+                hpLbl.Text = string.format("HP: %d / %d", hp, maxHp)
+                local ratio = math.clamp(hum.Health / math.max(1, hum.MaxHealth), 0, 1)
+                hpLbl.TextColor3 = Color3.fromHSV(ratio * 0.33, 0.9, 1)
+            end
+        end
+        UpdateHealth()
+        table.insert(playerEspConnections[targetPlayer], hum.HealthChanged:Connect(UpdateHealth))
+        table.insert(playerEspConnections[targetPlayer], hum:GetPropertyChangedSignal("MaxHealth"):Connect(UpdateHealth))
+        playerEspBillboards[targetPlayer] = bgui
+    end
+    if targetPlayer.Character then
+        task.spawn(SetupCharacterESP, targetPlayer.Character)
+    end
+    table.insert(playerEspConnections[targetPlayer], targetPlayer.CharacterAdded:Connect(SetupCharacterESP))
+end
+local playerAddedEspConn = nil
+local playerRemovingEspConn = nil
+local function TogglePlayerESP(isEnabled)
+    espPlayerEnabled = isEnabled
+    if isEnabled then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= player then
+                CreatePlayerESP(p)
+            end
+        end
+        playerAddedEspConn = Players.PlayerAdded:Connect(function(p)
+            if espPlayerEnabled then
+                CreatePlayerESP(p)
+            end
+        end)
+        playerRemovingEspConn = Players.PlayerRemoving:Connect(function(p)
+            ClearPlayerESP(p)
+        end)
+    else
+        if playerAddedEspConn then playerAddedEspConn:Disconnect(); playerAddedEspConn = nil end
+        if playerRemovingEspConn then playerRemovingEspConn:Disconnect(); playerRemovingEspConn = nil end
+        for p, _ in pairs(playerEspBillboards) do
+            ClearPlayerESP(p)
+        end
+        for p, _ in pairs(playerEspConnections) do
+            ClearPlayerESP(p)
+        end
+    end
+end
+globalEnv.LonyGlobalCleanups.PlayerESP = function() TogglePlayerESP(false) end
+CreateMenuCheckbox(TabMiss, "ESP Player", 6, function(isEnabled)
+    TogglePlayerESP(isEnabled)
+end, Colors.MintNeon)
+local espNpcEnabled = false
+local npcEspBillboards = {}
+local npcDescendantAddedConn = nil
+local npcDescendantRemovingConn = nil
+local function IsPlayerCharacter(model)
+    return Players:GetPlayerFromCharacter(model) ~= nil
+end
+
+local function RemoveNpcESP(model)
+    if npcEspBillboards[model] then
+        npcEspBillboards[model]:Destroy()
+        npcEspBillboards[model] = nil
+    end
+end
+local function AttachNpcESP(model)
+    if not espNpcEnabled or not model or not model:IsA("Model") then return end
+    if IsPlayerCharacter(model) then return end
+    local hum = model:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    local adornee = model:FindFirstChild("Head") or model:FindFirstChild("HumanoidRootPart") or model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+    if not adornee then return end
+    RemoveNpcESP(model)
+    local bgui = Instance.new("BillboardGui")
+    bgui.Name = "LonyNpcESP"
+    bgui.Adornee = adornee
+    bgui.Size = UDim2.new(0, 180, 0, 26)
+    bgui.StudsOffset = Vector3.new(0, 2.5, 0)
+    bgui.AlwaysOnTop = true
+    bgui.Parent = ScreenGui
+    local nameLbl = Instance.new("TextLabel")
+    nameLbl.Size = UDim2.new(1, 0, 1, 0)
+    nameLbl.BackgroundTransparency = 1
+    nameLbl.Text = model.Name
+    nameLbl.TextColor3 = Colors.MintNeon
+    nameLbl.TextStrokeTransparency = 0.2
+    nameLbl.TextStrokeColor3 = Colors.HeaderBg
+    nameLbl.Font = Enum.Font.GothamBold
+    nameLbl.TextSize = 12
+    nameLbl.Parent = bgui
+    model:GetPropertyChangedSignal("Name"):Connect(function()
+        if nameLbl and nameLbl.Parent then
+            nameLbl.Text = model.Name
+        end
+    end)
+    npcEspBillboards[model] = bgui
+end
+local function ToggleNpcESP(isEnabled)
+    espNpcEnabled = isEnabled
+    if isEnabled then
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("Humanoid") and obj.Parent and obj.Parent:IsA("Model") then
+                AttachNpcESP(obj.Parent)
+            end
+        end
+        npcDescendantAddedConn = workspace.DescendantAdded:Connect(function(obj)
+            if not espNpcEnabled then return end
+            if obj:IsA("Humanoid") then
+                task.defer(function()
+                    if obj.Parent and obj.Parent:IsA("Model") then
+                        AttachNpcESP(obj.Parent)
+                    end
+                end)
+            elseif obj:IsA("BasePart") and (obj.Name == "Head" or obj.Name == "HumanoidRootPart") then
+                task.defer(function()
+                    local model = obj.Parent
+                    if model and model:IsA("Model") and not npcEspBillboards[model] and model:FindFirstChildOfClass("Humanoid") then
+                        AttachNpcESP(model)
+                    end
+                end)
+            end
+        end)
+        npcDescendantRemovingConn = workspace.DescendantRemoving:Connect(function(obj)
+            if obj:IsA("Model") and npcEspBillboards[obj] then
+                RemoveNpcESP(obj)
+            end
+        end)
+    else
+        if npcDescendantAddedConn then npcDescendantAddedConn:Disconnect(); npcDescendantAddedConn = nil end
+        if npcDescendantRemovingConn then npcDescendantRemovingConn:Disconnect(); npcDescendantRemovingConn = nil end
+        for model, _ in pairs(npcEspBillboards) do
+            RemoveNpcESP(model)
+        end
+    end
+end
+globalEnv.LonyGlobalCleanups.NpcESP = function() ToggleNpcESP(false) end
+CreateMenuCheckbox(TabMiss, "ESP NPC", 7, function(isEnabled)
+    ToggleNpcESP(isEnabled)
+end, Colors.MintNeon)
+globalEnv.LonyGlobalCleanups.MainGui = function()
+    for _, conn in ipairs(mainGuiConnections) do
+        if conn and conn.Connected then conn:Disconnect() end
+    end
+    table.clear(mainGuiConnections)
+end
 local isMenuOpen = true
 FloatBtn.MouseButton1Click:Connect(function()
     isMenuOpen = not isMenuOpen
