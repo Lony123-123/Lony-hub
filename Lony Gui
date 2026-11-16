@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local ContextActionService = game:GetService("ContextActionService")
 local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
 local GuiService = game:GetService("GuiService")
@@ -2734,7 +2735,7 @@ globalEnv.LonyGlobalCleanups.PlayerESP = function() TogglePlayerESP(false) end
 
 CreateMenuCheckbox(TabMiss, "ESP Player", 6, function(isEnabled)
     TogglePlayerESP(isEnabled)
-end, Colors.MintNeon)
+end, Color3.fromRGB(0, 225, 255))
 
 local espNpcEnabled = false
 local npcEspBillboards = {}
@@ -2832,7 +2833,163 @@ globalEnv.LonyGlobalCleanups.NpcESP = function() ToggleNpcESP(false) end
 
 CreateMenuCheckbox(TabMiss, "ESP NPC", 7, function(isEnabled)
     ToggleNpcESP(isEnabled)
-end, Colors.MintNeon)
+end, Color3.fromRGB(0, 225, 255))
+
+-- DeleBlock: local-only block selection, dragging, RGB highlight, and deletion.
+-- Changes made here affect only this client's view; server-owned parts may reappear.
+local deleBlockEnabled = false
+local deleBlockHeldPart = nil
+local deleBlockHighlight = nil
+local deleBlockRgbConn = nil
+local deleBlockDragging = false
+local deleBlockDistance = 0
+local deleBlockGrabOffset = Vector3.zero
+local deleBlockConnections = {}
+local DELEBLOCK_RGB_SPEED = 0.6
+local DELEBLOCK_SCROLL_STEP = 2
+local DELEBLOCK_MIN_DISTANCE = 2
+local DELEBLOCK_MAX_DISTANCE = 200
+local DELEBLOCK_ZOOM_ACTION = "LonyDeleBlockBlockCameraZoom"
+
+local function SetDeleBlockZoomBlocked(blocked)
+    if blocked then
+        ContextActionService:BindActionAtPriority(
+            DELEBLOCK_ZOOM_ACTION,
+            function()
+                return Enum.ContextActionResult.Sink
+            end,
+            false,
+            Enum.ContextActionPriority.High.Value,
+            Enum.UserInputType.MouseWheel
+        )
+    else
+        ContextActionService:UnbindAction(DELEBLOCK_ZOOM_ACTION)
+    end
+end
+
+local function ClearDeleBlockSelection()
+    if deleBlockRgbConn then
+        deleBlockRgbConn:Disconnect()
+        deleBlockRgbConn = nil
+    end
+    if deleBlockHighlight then
+        deleBlockHighlight:Destroy()
+        deleBlockHighlight = nil
+    end
+    deleBlockHeldPart = nil
+    deleBlockDragging = false
+    SetDeleBlockZoomBlocked(false)
+end
+
+local function IsDeleBlockTarget(target)
+    return target
+        and target:IsA("BasePart")
+        and target.Name ~= "Baseplate"
+        and not (player.Character and target:IsDescendantOf(player.Character))
+end
+
+local function BeginDeleBlockDragging()
+    if not deleBlockEnabled or not deleBlockHeldPart or not deleBlockHeldPart.Parent or deleBlockDragging then
+        return
+    end
+    local camera = workspace.CurrentCamera
+    if not camera then return end
+
+    deleBlockDragging = true
+    SetDeleBlockZoomBlocked(true)
+    local hitPosition = mouse.Hit.Position
+    deleBlockDistance = math.max((hitPosition - camera.CFrame.Position).Magnitude, 1)
+    deleBlockGrabOffset = deleBlockHeldPart.CFrame:PointToObjectSpace(hitPosition)
+end
+
+local function SelectDeleBlockTarget(target)
+    ClearDeleBlockSelection()
+    if not deleBlockEnabled or not IsDeleBlockTarget(target) then return end
+
+    deleBlockHeldPart = target
+    local effect = Instance.new("Highlight")
+    effect.Name = "LonyDeleBlockHighlight"
+    effect.Adornee = target
+    effect.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    effect.FillTransparency = 0.45
+    effect.OutlineTransparency = 0
+    effect.Parent = workspace
+    deleBlockHighlight = effect
+
+    deleBlockRgbConn = RunService.RenderStepped:Connect(function()
+        if not deleBlockEnabled then
+            ClearDeleBlockSelection()
+            return
+        end
+        if deleBlockHighlight then
+            local hue = (os.clock() * DELEBLOCK_RGB_SPEED) % 1
+            deleBlockHighlight.FillColor = Color3.fromHSV(hue, 1, 1)
+            deleBlockHighlight.OutlineColor = Color3.fromHSV((hue + 0.15) % 1, 1, 1)
+        end
+        if deleBlockDragging then
+            if not deleBlockHeldPart or not deleBlockHeldPart.Parent then
+                ClearDeleBlockSelection()
+                return
+            end
+            local ray = mouse.UnitRay
+            local targetPoint = ray.Origin + ray.Direction * deleBlockDistance
+            local rotation = deleBlockHeldPart.CFrame - deleBlockHeldPart.Position
+            local worldOffset = rotation:VectorToWorldSpace(deleBlockGrabOffset)
+            deleBlockHeldPart.CFrame = CFrame.new(targetPoint - worldOffset) * rotation
+        end
+    end)
+end
+
+local function StopDeleBlock()
+    deleBlockEnabled = false
+    for _, conn in ipairs(deleBlockConnections) do
+        if conn and conn.Connected then conn:Disconnect() end
+    end
+    table.clear(deleBlockConnections)
+    ClearDeleBlockSelection()
+    SetDeleBlockZoomBlocked(false)
+end
+
+local function ToggleDeleBlock(isEnabled)
+    StopDeleBlock()
+    if not isEnabled then return end
+    deleBlockEnabled = true
+
+    table.insert(deleBlockConnections, UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if not deleBlockEnabled or gameProcessed then return end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            SelectDeleBlockTarget(mouse.Target)
+        elseif input.KeyCode == Enum.KeyCode.L and deleBlockHeldPart then
+            BeginDeleBlockDragging()
+        elseif input.KeyCode == Enum.KeyCode.R and deleBlockHeldPart then
+            local target = deleBlockHeldPart
+            ClearDeleBlockSelection()
+            if target.Parent then target:Destroy() end
+        end
+    end))
+
+    table.insert(deleBlockConnections, UserInputService.InputChanged:Connect(function(input)
+        if not deleBlockEnabled or not deleBlockDragging then return end
+        if input.UserInputType == Enum.UserInputType.MouseWheel then
+            deleBlockDistance = math.clamp(
+                deleBlockDistance + input.Position.Z * DELEBLOCK_SCROLL_STEP,
+                DELEBLOCK_MIN_DISTANCE,
+                DELEBLOCK_MAX_DISTANCE
+            )
+        end
+    end))
+
+    table.insert(deleBlockConnections, UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            ClearDeleBlockSelection()
+        end
+    end))
+end
+
+globalEnv.LonyGlobalCleanups.DeleBlock = StopDeleBlock
+CreateMenuCheckbox(TabMiss, "DeleBlock", 8, function(isEnabled)
+    ToggleDeleBlock(isEnabled)
+end, Color3.fromRGB(255, 125, 135))
 
 globalEnv.LonyGlobalCleanups.MainGui = function()
     for _, conn in ipairs(mainGuiConnections) do
