@@ -1,19 +1,20 @@
-
 local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Lighting = game:GetService("Lighting")
+local StarterGui = game:GetService("StarterGui")
 
 local player = Players.LocalPlayer
 local parentGui = (gethui and gethui()) or game:GetService("CoreGui") or player:WaitForChild("PlayerGui")
-for _, name in ipairs({"FlightControl", "EleutheriaGUI", "LonyGUI", "LonyHighlights"}) do
-	if parentGui:FindFirstChild(name) then
-		parentGui[name]:Destroy()
-	end
+for _, name in ipairs({"FlightControl", "EleutheriaGUI", "LonyGUI", "LonyHighlights", "RealBombGetter", "HandScannerGUI"}) do
+    if parentGui:FindFirstChild(name) then
+        parentGui[name]:Destroy()
+    end
 end
 if Lighting:FindFirstChild("LonyBlur") then
-	Lighting.LonyBlur:Destroy()
+    Lighting.LonyBlur:Destroy()
 end
 
 -- Thư mục chứa toàn bộ Highlight xuyên tường
@@ -32,95 +33,106 @@ local ignoredPlayers = {}     -- [Player] = true
 local ignoredHighlights = {}  -- [Player] = Highlight
 
 local function character()
-	return player.Character
+    return player.Character
 end
 
 local function root()
-	local c = character()
-	return c and c:FindFirstChild("HumanoidRootPart")
+    local c = character()
+    return c and c:FindFirstChild("HumanoidRootPart")
+end
+
+local function notify(title, text)
+    pcall(function()
+        StarterGui:SetCore("SendNotification", {
+            Title = title,
+            Text = text,
+            Duration = 2
+        })
+    end)
+    print("📢 [" .. title .. "]: " .. text)
 end
 
 -- Hàm tạo Highlight xuyên tường (AlwaysOnTop)
 local function createWallHighlight(targetChar, fillColor, outlineColor)
-	local hl = Instance.new("Highlight")
-	hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop -- Xuyên tường
-	hl.FillColor = fillColor
-	hl.OutlineColor = outlineColor
-	hl.FillTransparency = 0.45
-	hl.OutlineTransparency = 0
-	hl.Adornee = targetChar
-	hl.Parent = HighlightFolder
-	return hl
+    local hl = Instance.new("Highlight")
+    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop -- Xuyên tường
+    hl.FillColor = fillColor
+    hl.OutlineColor = outlineColor
+    hl.FillTransparency = 0.45
+    hl.OutlineTransparency = 0
+    hl.Adornee = targetChar
+    hl.Parent = HighlightFolder
+    return hl
 end
 
 -- Cập nhật Highlight màu xanh cho người được Ưu tiên
 local function updatePriorityHighlight()
-	if priorityHighlight then
-		priorityHighlight:Destroy()
-		priorityHighlight = nil
-	end
-	if priorityTarget and priorityTarget.Character then
-		priorityHighlight = createWallHighlight(
-			priorityTarget.Character,
-			Color3.fromRGB(0, 255, 120), -- Màu xanh
-			Color3.fromRGB(200, 255, 220)
-		)
-	end
+    if priorityHighlight then
+        priorityHighlight:Destroy()
+        priorityHighlight = nil
+    end
+    if priorityTarget and priorityTarget.Character then
+        priorityHighlight = createWallHighlight(
+            priorityTarget.Character,
+            Color3.fromRGB(0, 255, 120), -- Màu xanh
+            Color3.fromRGB(200, 255, 220)
+        )
+    end
 end
 
 local function clearPriorityTarget()
-	priorityTarget = nil
-	updatePriorityHighlight()
+    priorityTarget = nil
+    updatePriorityHighlight()
 end
 
 -- Cập nhật Highlight màu đỏ cho người nằm trong danh sách Bỏ qua
 local function setIgnoredPlayer(targetPlayer, state)
-	if state then
-		ignoredPlayers[targetPlayer] = true
-		if ignoredHighlights[targetPlayer] then
-			ignoredHighlights[targetPlayer]:Destroy()
-		end
-		if targetPlayer.Character then
-			ignoredHighlights[targetPlayer] = createWallHighlight(
-				targetPlayer.Character,
-				Color3.fromRGB(255, 45, 45), -- Màu đỏ
-				Color3.fromRGB(255, 180, 180)
-			)
-		end
-	else
-		ignoredPlayers[targetPlayer] = nil
-		if ignoredHighlights[targetPlayer] then
-			ignoredHighlights[targetPlayer]:Destroy()
-			ignoredHighlights[targetPlayer] = nil
-		end
-	end
+    if state then
+        ignoredPlayers[targetPlayer] = true
+        if ignoredHighlights[targetPlayer] then
+            ignoredHighlights[targetPlayer]:Destroy()
+        end
+        if targetPlayer.Character then
+            ignoredHighlights[targetPlayer] = createWallHighlight(
+                targetPlayer.Character,
+                Color3.fromRGB(255, 45, 45), -- Màu đỏ
+                Color3.fromRGB(255, 180, 180)
+            )
+        end
+    else
+        ignoredPlayers[targetPlayer] = nil
+        if ignoredHighlights[targetPlayer] then
+            ignoredHighlights[targetPlayer]:Destroy()
+            ignoredHighlights[targetPlayer] = nil
+        end
+    end
 end
 
 local function clearAllSelections()
-	clearPriorityTarget()
-	for p, _ in pairs(ignoredPlayers) do
-		setIgnoredPlayer(p, false)
-	end
-	table.clear(ignoredPlayers)
-	HighlightFolder:ClearAllChildren()
+    clearPriorityTarget()
+    for p, _ in pairs(ignoredPlayers) do
+        setIgnoredPlayer(p, false)
+    end
+    table.clear(ignoredPlayers)
+    HighlightFolder:ClearAllChildren()
 end
 
 -- Tự động gắn lại Highlight xuyên tường nếu người chơi đó hồi sinh
 RunService.Heartbeat:Connect(function()
-	if priorityTarget and priorityTarget.Character and priorityHighlight then
-		if priorityHighlight.Adornee ~= priorityTarget.Character then
-			priorityHighlight.Adornee = priorityTarget.Character
-		end
-	end
-	for p, hl in pairs(ignoredHighlights) do
-		if p and p.Parent == Players then
-			if p.Character and hl.Adornee ~= p.Character then
-				hl.Adornee = p.Character
-			end
-		else
-			setIgnoredPlayer(p, false)
-		end
-	end
+    if priorityTarget and priorityTarget.Character and priorityHighlight then
+        if priorityHighlight.Adornee ~= priorityTarget.Character then
+            priorityHighlight.Adornee = priorityTarget.Character
+        end
+    end
+    for p, hl in pairs(ignoredHighlights) do
+        if p and p.Parent == Players then
+            if p.Character and hl.Adornee ~= p.Character then
+                hl.Adornee = p.Character
+            end
+        else
+            setIgnoredPlayer(p, false)
+        end
+    end
 end)
 
 -- ================= HỆ THỐNG FREECAM =================
@@ -133,102 +145,102 @@ local freecamBaseSpeed = 60
 local freecamSensitivity = 0.003
 
 local function startFreecam()
-	if freecamActive then return end
-	freecamActive = true
+    if freecamActive then return end
+    freecamActive = true
 
-	local cam = workspace.CurrentCamera
-	if not cam then return end
+    local cam = Workspace.CurrentCamera
+    if not cam then return end
 
-	cam.CameraType = Enum.CameraType.Scriptable
-	camPosition = cam.CFrame.Position
-	local rx, ry, _ = cam.CFrame:ToEulerAnglesYXZ()
-	camPitch = rx
-	camYaw = ry
+    cam.CameraType = Enum.CameraType.Scriptable
+    camPosition = cam.CFrame.Position
+    local rx, ry, _ = cam.CFrame:ToEulerAnglesYXZ()
+    camPitch = rx
+    camYaw = ry
 
-	freecamConnection = RunService.RenderStepped:Connect(function(dt)
-		if not freecamActive then return end
-		local currentCam = workspace.CurrentCamera
-		if not currentCam then return end
+    freecamConnection = RunService.RenderStepped:Connect(function(dt)
+        if not freecamActive then return end
+        local currentCam = Workspace.CurrentCamera
+        if not currentCam then return end
 
-		if currentCam.CameraType ~= Enum.CameraType.Scriptable then
-			currentCam.CameraType = Enum.CameraType.Scriptable
-		end
+        if currentCam.CameraType ~= Enum.CameraType.Scriptable then
+            currentCam.CameraType = Enum.CameraType.Scriptable
+        end
 
-		-- Xoay góc nhìn khi giữ chuột phải
-		if UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
-			UIS.MouseBehavior = Enum.MouseBehavior.LockCurrentPosition
-			local delta = UIS:GetMouseDelta()
-			camYaw = camYaw - delta.X * freecamSensitivity
-			camPitch = math.clamp(camPitch - delta.Y * freecamSensitivity, -math.rad(89), math.rad(89))
-		else
-			UIS.MouseBehavior = Enum.MouseBehavior.Default
-		end
+        -- Xoay góc nhìn khi giữ chuột phải
+        if UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+            UIS.MouseBehavior = Enum.MouseBehavior.LockCurrentPosition
+            local delta = UIS:GetMouseDelta()
+            camYaw = camYaw - delta.X * freecamSensitivity
+            camPitch = math.clamp(camPitch - delta.Y * freecamSensitivity, -math.rad(89), math.rad(89))
+        else
+            UIS.MouseBehavior = Enum.MouseBehavior.Default
+        end
 
-		local rotCFrame = CFrame.fromEulerAnglesYXZ(camPitch, camYaw, 0)
+        local rotCFrame = CFrame.fromEulerAnglesYXZ(camPitch, camYaw, 0)
 
-		-- Tính toán hướng di chuyển của Freecam
-		local moveVector = Vector3.zero
-		if not UIS:GetFocusedTextBox() then
-			if UIS:IsKeyDown(Enum.KeyCode.W) then moveVector += rotCFrame.LookVector end
-			if UIS:IsKeyDown(Enum.KeyCode.S) then moveVector -= rotCFrame.LookVector end
-			if UIS:IsKeyDown(Enum.KeyCode.D) then moveVector += rotCFrame.RightVector end
-			if UIS:IsKeyDown(Enum.KeyCode.A) then moveVector -= rotCFrame.RightVector end
-			if UIS:IsKeyDown(Enum.KeyCode.E) or UIS:IsKeyDown(Enum.KeyCode.Space) then moveVector += Vector3.yAxis end
-			if UIS:IsKeyDown(Enum.KeyCode.Q) or UIS:IsKeyDown(Enum.KeyCode.LeftControl) then moveVector -= Vector3.yAxis end
-		end
+        -- Tính toán hướng di chuyển của Freecam
+        local moveVector = Vector3.zero
+        if not UIS:GetFocusedTextBox() then
+            if UIS:IsKeyDown(Enum.KeyCode.W) then moveVector += rotCFrame.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.S) then moveVector -= rotCFrame.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.D) then moveVector += rotCFrame.RightVector end
+            if UIS:IsKeyDown(Enum.KeyCode.A) then moveVector -= rotCFrame.RightVector end
+            if UIS:IsKeyDown(Enum.KeyCode.E) or UIS:IsKeyDown(Enum.KeyCode.Space) then moveVector += Vector3.yAxis end
+            if UIS:IsKeyDown(Enum.KeyCode.Q) or UIS:IsKeyDown(Enum.KeyCode.LeftControl) then moveVector -= Vector3.yAxis end
+        end
 
-		local currentSpeed = freecamBaseSpeed
-		if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then
-			currentSpeed = freecamBaseSpeed * 2.5
-		end
+        local currentSpeed = freecamBaseSpeed
+        if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then
+            currentSpeed = freecamBaseSpeed * 2.5
+        end
 
-		if moveVector.Magnitude > 0 then
-			camPosition = camPosition + (moveVector.Unit * currentSpeed * dt)
-		end
+        if moveVector.Magnitude > 0 then
+            camPosition = camPosition + (moveVector.Unit * currentSpeed * dt)
+        end
 
-		currentCam.CFrame = CFrame.new(camPosition) * rotCFrame
-		currentCam.Focus = currentCam.CFrame
-	end)
+        currentCam.CFrame = CFrame.new(camPosition) * rotCFrame
+        currentCam.Focus = currentCam.CFrame
+    end)
 end
 
 local function stopFreecam()
-	if not freecamActive then return end
-	freecamActive = false
+    if not freecamActive then return end
+    freecamActive = false
 
-	if freecamConnection then
-		freecamConnection:Disconnect()
-		freecamConnection = nil
-	end
+    if freecamConnection then
+        freecamConnection:Disconnect()
+        freecamConnection = nil
+    end
 
-	UIS.MouseBehavior = Enum.MouseBehavior.Default
+    UIS.MouseBehavior = Enum.MouseBehavior.Default
 
-	local cam = workspace.CurrentCamera
-	if cam then
-		cam.CameraType = Enum.CameraType.Custom
-		local c = character()
-		local h = c and c:FindFirstChildOfClass("Humanoid")
-		if h then
-			cam.CameraSubject = h
-		end
-	end
+    local cam = Workspace.CurrentCamera
+    if cam then
+        cam.CameraType = Enum.CameraType.Custom
+        local c = character()
+        local h = c and c:FindFirstChildOfClass("Humanoid")
+        if h then
+            cam.CameraSubject = h
+        end
+    end
 end
 
 -- Hỗ trợ xoay Freecam trên màn hình cảm ứng (Mobile)
 UIS.TouchMoved:Connect(function(touch, processed)
-	if freecamActive and not processed then
-		local delta = touch.Delta
-		camYaw = camYaw - delta.X * freecamSensitivity * 1.5
-		camPitch = math.clamp(camPitch - delta.Y * freecamSensitivity * 1.5, -math.rad(89), math.rad(89))
-	end
+    if freecamActive and not processed then
+        local delta = touch.Delta
+        camYaw = camYaw - delta.X * freecamSensitivity * 1.5
+        camPitch = math.clamp(camPitch - delta.Y * freecamSensitivity * 1.5, -math.rad(89), math.rad(89))
+    end
 end)
 
 -- ================= GIAO DIỆN CHÍNH =================
 local Colors = {
-	BgDark = Color3.fromRGB(14, 19, 24),
-	HeaderBg = Color3.fromRGB(8, 11, 14),
-	MintNeon = Color3.fromRGB(0, 255, 195),
-	TextWhite = Color3.fromRGB(255, 255, 255),
-	TextDim = Color3.fromRGB(170, 185, 180)
+    BgDark = Color3.fromRGB(14, 19, 24),
+    HeaderBg = Color3.fromRGB(8, 11, 14),
+    MintNeon = Color3.fromRGB(0, 255, 195),
+    TextWhite = Color3.fromRGB(255, 255, 255),
+    TextDim = Color3.fromRGB(170, 185, 180)
 }
 
 local MenuBlur = Instance.new("BlurEffect")
@@ -243,33 +255,33 @@ ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.Parent = parentGui
 
 local function MakeDraggable(dragHandle, targetFrame)
-	local dragging, dragInput, dragStart, startPos
-	dragHandle.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			dragging = true
-			dragStart = input.Position
-			startPos = targetFrame.Position
-			input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then
-					dragging = false
-				end
-			end)
-		end
-	end)
-	dragHandle.InputChanged:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-			dragInput = input
-		end
-	end)
-	UIS.InputChanged:Connect(function(input)
-		if input == dragInput and dragging then
-			local delta = input.Position - dragStart
-			targetFrame.Position = UDim2.new(
-				startPos.X.Scale, startPos.X.Offset + delta.X,
-				startPos.Y.Scale, startPos.Y.Offset + delta.Y
-			)
-		end
-	end)
+    local dragging, dragInput, dragStart, startPos
+    dragHandle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = targetFrame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    dragHandle.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    UIS.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            targetFrame.Position = UDim2.new(
+                startPos.X.Scale, startPos.X.Offset + delta.X,
+                startPos.Y.Scale, startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
 end
 
 local FloatBtn = Instance.new("ImageButton")
@@ -312,17 +324,17 @@ DoveIcon.ImageColor3 = Colors.MintNeon
 DoveIcon.Parent = FloatBtn
 
 task.spawn(function()
-	local success, assetUrl = pcall(function()
-		if writefile and getcustomasset then
-			local fileName = "lony_dove_icon.png"
-			if not isfile(fileName) then
-				local imgData = game:HttpGet("https://img.icons8.com/ios/250/ffffff/peace-pigeon.png")
-				writefile(fileName, imgData)
-			end
-			return getcustomasset(fileName)
-		end
-	end)
-	DoveIcon.Image = (success and assetUrl) or "rbxassetid://13321848320"
+    local success, assetUrl = pcall(function()
+        if writefile and getcustomasset then
+            local fileName = "lony_dove_icon.png"
+            if not isfile(fileName) then
+                local imgData = game:HttpGet("https://img.icons8.com/ios/250/ffffff/peace-pigeon.png")
+                writefile(fileName, imgData)
+            end
+            return getcustomasset(fileName)
+        end
+    end)
+    DoveIcon.Image = (success and assetUrl) or "rbxassetid://13321848320"
 end)
 MakeDraggable(FloatBtn, FloatBtn)
 
@@ -430,181 +442,188 @@ ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 ListLayout.Parent = ContentList
 
 local function CreateCheckbox(labelText, order, onToggle)
-	local Row = Instance.new("Frame")
-	Row.Size = UDim2.new(1, 0, 0, 24)
-	Row.BackgroundTransparency = 1
-	Row.LayoutOrder = order
-	Row.Parent = ContentList
+    local Row = Instance.new("Frame")
+    Row.Size = UDim2.new(1, 0, 0, 24)
+    Row.BackgroundTransparency = 1
+    Row.LayoutOrder = order
+    Row.Parent = ContentList
 
-	local BoxBtn = Instance.new("TextButton")
-	BoxBtn.Size = UDim2.fromOffset(22, 22)
-	BoxBtn.Position = UDim2.new(0, 0, 0.5, 0)
-	BoxBtn.AnchorPoint = Vector2.new(0, 0.5)
-	BoxBtn.BackgroundColor3 = Colors.HeaderBg
-	BoxBtn.BackgroundTransparency = 0.2
-	BoxBtn.Text = ""
-	BoxBtn.AutoButtonColor = false
-	BoxBtn.Parent = Row
-	Instance.new("UICorner", BoxBtn).CornerRadius = UDim.new(0, 5)
+    local BoxBtn = Instance.new("TextButton")
+    BoxBtn.Size = UDim2.fromOffset(22, 22)
+    BoxBtn.Position = UDim2.new(0, 0, 0.5, 0)
+    BoxBtn.AnchorPoint = Vector2.new(0, 0.5)
+    BoxBtn.BackgroundColor3 = Colors.HeaderBg
+    BoxBtn.BackgroundTransparency = 0.2
+    BoxBtn.Text = ""
+    BoxBtn.AutoButtonColor = false
+    BoxBtn.Parent = Row
+    Instance.new("UICorner", BoxBtn).CornerRadius = UDim.new(0, 5)
 
-	local BoxStroke = Instance.new("UIStroke")
-	BoxStroke.Color = Colors.MintNeon
-	BoxStroke.Thickness = 1.3
-	BoxStroke.Parent = BoxBtn
+    local BoxStroke = Instance.new("UIStroke")
+    BoxStroke.Color = Colors.MintNeon
+    BoxStroke.Thickness = 1.3
+    BoxStroke.Parent = BoxBtn
 
-	local CheckMark = Instance.new("TextLabel")
-	CheckMark.Size = UDim2.new(1, 0, 1, 0)
-	CheckMark.BackgroundTransparency = 1
-	CheckMark.Text = "✓"
-	CheckMark.TextColor3 = Colors.MintNeon
-	CheckMark.Font = Enum.Font.GothamBold
-	CheckMark.TextSize = 15
-	CheckMark.Visible = false
-	CheckMark.Parent = BoxBtn
+    local CheckMark = Instance.new("TextLabel")
+    CheckMark.Size = UDim2.new(1, 0, 1, 0)
+    CheckMark.BackgroundTransparency = 1
+    CheckMark.Text = "✓"
+    CheckMark.TextColor3 = Colors.MintNeon
+    CheckMark.Font = Enum.Font.GothamBold
+    CheckMark.TextSize = 15
+    CheckMark.Visible = false
+    CheckMark.Parent = BoxBtn
 
-	local Label = Instance.new("TextLabel")
-	Label.Size = UDim2.new(1, -32, 1, 0)
-	Label.Position = UDim2.fromOffset(30, 0)
-	Label.BackgroundTransparency = 1
-	Label.Text = labelText
-	Label.TextColor3 = Colors.TextWhite
-	Label.Font = Enum.Font.GothamBold
-	Label.TextSize = 12
-	Label.TextXAlignment = Enum.TextXAlignment.Left
-	Label.Parent = Row
+    local Label = Instance.new("TextLabel")
+    Label.Size = UDim2.new(1, -32, 1, 0)
+    Label.Position = UDim2.fromOffset(30, 0)
+    Label.BackgroundTransparency = 1
+    Label.Text = labelText
+    Label.TextColor3 = Colors.TextWhite
+    Label.Font = Enum.Font.GothamBold
+    Label.TextSize = 12
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.Parent = Row
 
-	local ClickArea = Instance.new("TextButton")
-	ClickArea.Size = UDim2.new(1, 0, 1, 0)
-	ClickArea.BackgroundTransparency = 1
-	ClickArea.Text = ""
-	ClickArea.Parent = Row
+    local ClickArea = Instance.new("TextButton")
+    ClickArea.Size = UDim2.new(1, 0, 1, 0)
+    ClickArea.BackgroundTransparency = 1
+    ClickArea.Text = ""
+    ClickArea.Parent = Row
 
-	local function setVisual(state)
-		CheckMark.Visible = state
-		TweenService:Create(BoxBtn, TweenInfo.new(0.15), {
-			BackgroundColor3 = state and Color3.fromRGB(0, 65, 50) or Colors.HeaderBg
-		}):Play()
-	end
+    local function setVisual(state)
+        CheckMark.Visible = state
+        TweenService:Create(BoxBtn, TweenInfo.new(0.15), {
+            BackgroundColor3 = state and Color3.fromRGB(0, 65, 50) or Colors.HeaderBg
+        }):Play()
+    end
 
-	ClickArea.MouseButton1Click:Connect(function()
-		onToggle()
-	end)
+    ClickArea.MouseButton1Click:Connect(function()
+        onToggle()
+    end)
 
-	return setVisual
+    return setVisual
 end
 
 local function setNoclip(value)
-	noclip = value
-	if clipConnection then
-		clipConnection:Disconnect()
-		clipConnection = nil
-	end
-	if noclip then
-		clipConnection = RunService.Stepped:Connect(function()
-			local c = character()
-			if not c then return end
+    noclip = value
+    if clipConnection then
+        clipConnection:Disconnect()
+        clipConnection = nil
+    end
+    if noclip then
+        clipConnection = RunService.Stepped:Connect(function()
+            local c = character()
+            if not c then return end
 
-			for _, part in ipairs(c:GetDescendants()) do
-				if part:IsA("BasePart") then
-					if savedCollisions[part] == nil then
-						savedCollisions[part] = part.CanCollide
-					end
-					part.CanCollide = false
-				end
-			end
-		end)
-	else
-		for part, oldValue in pairs(savedCollisions) do
-			if part and part.Parent then
-				part.CanCollide = oldValue
-			end
-		end
-		table.clear(savedCollisions)
-	end
+            for _, part in ipairs(c:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    if savedCollisions[part] == nil then
+                        savedCollisions[part] = part.CanCollide
+                    end
+                    part.CanCollide = false
+                end
+            end
+        end)
+    else
+        for part, oldValue in pairs(savedCollisions) do
+            if part and part.Parent then
+                part.CanCollide = oldValue
+            end
+        end
+        table.clear(savedCollisions)
+    end
 end
 
 -- ================= LOGIC TỪ THIỆN BOM & CHỌN MỤC TIÊU =================
 local charityActive = false
 local setCharityVisual
 local charityWasNoclip = false
-local charityPos1 = Vector3.new(274, -176, 30)
-local charityPos2 = Vector3.new(274, -175, 30)
 local charityBehindDistance = 1.5
+_G.AutoBomb = false
+
+-- Hàm tìm khối Handle cấp bom
+local function getBombHandle()
+    local givers = Workspace:FindFirstChild("Givers")
+    local toolGivers = givers and givers:FindFirstChild("ToolGivers")
+    local bombModel = toolGivers and toolGivers:FindFirstChild("Classic Timebomb")
+    return bombModel and bombModel:FindFirstChild("Handle")
+end
 
 local function charityRoot(targetPlayer)
-	local c = targetPlayer and targetPlayer.Character
-	return c and c:FindFirstChild("HumanoidRootPart")
+    local c = targetPlayer and targetPlayer.Character
+    return c and c:FindFirstChild("HumanoidRootPart")
 end
 
 local function charityHealthy(targetPlayer)
-	local c = targetPlayer and targetPlayer.Character
-	local h = c and c:FindFirstChildOfClass("Humanoid")
-	return h ~= nil and h.MaxHealth > 0 and h.Health > 1 and (h.Health / h.MaxHealth) * 100 > 1
+    local c = targetPlayer and targetPlayer.Character
+    local h = c and c:FindFirstChildOfClass("Humanoid")
+    return h ~= nil and h.MaxHealth > 0 and h.Health > 1 and (h.Health / h.MaxHealth) * 100 > 1
 end
 
 local function charityHasBomb(targetPlayer, bombName)
-	if not targetPlayer or not bombName then return false end
-	local c = targetPlayer.Character
-	local backpack = targetPlayer:FindFirstChild("Backpack")
-	return (c and c:FindFirstChild(bombName) ~= nil)
-		or (backpack and backpack:FindFirstChild(bombName) ~= nil) or false
+    if not targetPlayer or not bombName then return false end
+    local c = targetPlayer.Character
+    local backpack = targetPlayer:FindFirstChild("Backpack")
+    return (c and c:FindFirstChild(bombName) ~= nil)
+        or (backpack and backpack:FindFirstChild(bombName) ~= nil) or false
 end
 
 -- Kiểm tra mục tiêu hợp lệ (không nằm trong danh sách bị chuột phải bỏ qua)
 local function isTargetValid(targetPlayer, bombName)
-	return targetPlayer ~= nil
-		and targetPlayer ~= player
-		and targetPlayer.Parent == Players
-		and not ignoredPlayers[targetPlayer]
-		and charityRoot(targetPlayer) ~= nil
-		and charityHealthy(targetPlayer)
-		and (not bombName or not charityHasBomb(targetPlayer, bombName))
+    return targetPlayer ~= nil
+        and targetPlayer ~= player
+        and targetPlayer.Parent == Players
+        and not ignoredPlayers[targetPlayer]
+        and charityRoot(targetPlayer) ~= nil
+        and charityHealthy(targetPlayer)
+        and (not bombName or not charityHasBomb(targetPlayer, bombName))
 end
 
 -- Hàm dò tìm người chơi dưới con trỏ chuột (hỗ trợ cả Raycast trực tiếp lẫn chọn xuyên tường theo góc nhìn)
 local function getPlayerAtMouse()
-	local cam = workspace.CurrentCamera
-	if not cam then return nil end
+    local cam = Workspace.CurrentCamera
+    if not cam then return nil end
 
-	local mousePos = UIS:GetMouseLocation()
-	local unitRay = cam:ViewportPointToRay(mousePos.X, mousePos.Y)
+    local mousePos = UIS:GetMouseLocation()
+    local unitRay = cam:ViewportPointToRay(mousePos.X, mousePos.Y)
 
-	-- 1. Ưu tiên Raycast trực tiếp nếu nhìn thấy
-	local rayParams = RaycastParams.new()
-	rayParams.FilterType = Enum.RaycastFilterType.Exclude
-	if character() then
-		rayParams.FilterDescendantsInstances = {character()}
-	end
+    -- 1. Ưu tiên Raycast trực tiếp nếu nhìn thấy
+    local rayParams = RaycastParams.new()
+    rayParams.FilterType = Enum.RaycastFilterType.Exclude
+    if character() then
+        rayParams.FilterDescendantsInstances = {character()}
+    end
 
-	local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * 3000, rayParams)
-	if result and result.Instance then
-		for _, p in ipairs(Players:GetPlayers()) do
-			if p ~= player and p.Character and result.Instance:IsDescendantOf(p.Character) then
-				return p
-			end
-		end
-	end
+    local result = Workspace:Raycast(unitRay.Origin, unitRay.Direction * 3000, rayParams)
+    if result and result.Instance then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= player and p.Character and result.Instance:IsDescendantOf(p.Character) then
+                return p
+            end
+        end
+    end
 
-	-- 2. Nếu bị tường chắn (do Highlight xuyên tường), tìm người chơi khớp tâm chuột nhất trên màn hình (bán kính 35px)
-	local closestPlayer = nil
-	local shortestDist = 35
-	for _, p in ipairs(Players:GetPlayers()) do
-		if p ~= player and p.Character then
-			local hrp = p.Character:FindFirstChild("HumanoidRootPart")
-			if hrp then
-				local screenPos, onScreen = cam:WorldToViewportPoint(hrp.Position)
-				if onScreen then
-					local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-					if dist < shortestDist then
-						shortestDist = dist
-						closestPlayer = p
-					end
-				end
-			end
-		end
-	end
+    -- 2. Nếu bị tường chắn (do Highlight xuyên tường), tìm người chơi khớp tâm chuột nhất trên màn hình (bán kính 35px)
+    local closestPlayer = nil
+    local shortestDist = 35
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= player and p.Character then
+            local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local screenPos, onScreen = cam:WorldToViewportPoint(hrp.Position)
+                if onScreen then
+                    local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+                    if dist < shortestDist then
+                        shortestDist = dist
+                        closestPlayer = p
+                    end
+                end
+            end
+        end
+    end
 
-	return closestPlayer
+    return closestPlayer
 end
 
 -- Xử lý Chuột trái (Ưu tiên - Xanh) & Chuột phải (Bỏ qua - Đỏ)
@@ -612,259 +631,514 @@ local rightClickStartPos = nil
 local rightClickStartTime = 0
 
 UIS.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed or not charityActive then return end
+    if gameProcessed or not charityActive then return end
 
-	-- CHUỘT TRÁI: Chọn / Bỏ chọn Ưu tiên (Màu xanh)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		local clickedPlayer = getPlayerAtMouse()
-		if not clickedPlayer then return end
+    -- CHUỘT TRÁI: Chọn / Bỏ chọn Ưu tiên (Màu xanh)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        local clickedPlayer = getPlayerAtMouse()
+        if not clickedPlayer then return end
 
-		-- Nếu người này đang bị Bỏ qua (Màu đỏ) thì khóa không cho bấm chuột trái
-		if ignoredPlayers[clickedPlayer] then
-			print(clickedPlayer.Name .. " đang ở danh sách Bỏ qua (Đỏ)! Hãy click chuột phải lần nữa để gỡ trước.")
-			return
-		end
+        if ignoredPlayers[clickedPlayer] then
+            print(clickedPlayer.Name .. " đang ở danh sách Bỏ qua (Đỏ)! Hãy click chuột phải lần nữa để gỡ trước.")
+            return
+        end
 
-		-- Nếu bấm chuột trái lần nữa vào đúng người đang Ưu tiên -> Bỏ chọn
-		if priorityTarget == clickedPlayer then
-			clearPriorityTarget()
-			print("Đã hủy ưu tiên cho: " .. clickedPlayer.Name)
-		else
-			priorityTarget = clickedPlayer
-			updatePriorityHighlight()
-			print("Đã ưu tiên 1 trái bom (Xanh) cho: " .. clickedPlayer.Name)
-		end
+        if priorityTarget == clickedPlayer then
+            clearPriorityTarget()
+            print("Đã hủy ưu tiên cho: " .. clickedPlayer.Name)
+        else
+            priorityTarget = clickedPlayer
+            updatePriorityHighlight()
+            print("Đã ưu tiên 1 trái bom (Xanh) cho: " .. clickedPlayer.Name)
+        end
 
-	-- CHUỘT PHẢI: Ghi nhận vị trí bắt đầu nhấn để phân biệt giữa Click chọn và Giữ xoay camera
-	elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
-		rightClickStartPos = UIS:GetMouseLocation()
-		rightClickStartTime = tick()
-	end
+    -- CHUỘT PHẢI: Ghi nhận vị trí bắt đầu nhấn để phân biệt giữa Click chọn và Giữ xoay camera
+    elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
+        rightClickStartPos = UIS:GetMouseLocation()
+        rightClickStartTime = tick()
+    end
 end)
 
 UIS.InputEnded:Connect(function(input, gameProcessed)
-	if not charityActive then return end
+    if not charityActive then return end
 
-	-- Khi nhả Chuột phải: Nếu thời gian nhấn < 0.25s và chuột không kéo đi xa -> Tính là Click chuột phải
-	if input.UserInputType == Enum.UserInputType.MouseButton2 and rightClickStartPos then
-		local moveDist = (UIS:GetMouseLocation() - rightClickStartPos).Magnitude
-		local holdTime = tick() - rightClickStartTime
-		rightClickStartPos = nil
+    if input.UserInputType == Enum.UserInputType.MouseButton2 and rightClickStartPos then
+        local moveDist = (UIS:GetMouseLocation() - rightClickStartPos).Magnitude
+        local holdTime = tick() - rightClickStartTime
+        rightClickStartPos = nil
 
-		if holdTime < 0.3 and moveDist < 12 then
-			local clickedPlayer = getPlayerAtMouse()
-			if not clickedPlayer then return end
+        if holdTime < 0.3 and moveDist < 12 then
+            local clickedPlayer = getPlayerAtMouse()
+            if not clickedPlayer then return end
 
-			-- Nếu người này đang được Ưu tiên (Màu xanh) thì khóa không cho bấm chuột phải
-			if priorityTarget == clickedPlayer then
-				print(clickedPlayer.Name .. " đang được Ưu tiên (Xanh)! Hãy click chuột trái lần nữa để gỡ trước.")
-				return
-			end
+            if priorityTarget == clickedPlayer then
+                print(clickedPlayer.Name .. " đang được Ưu tiên (Xanh)! Hãy click chuột trái lần nữa để gỡ trước.")
+                return
+            end
 
-			-- Bật / Tắt trạng thái Bỏ qua (Màu đỏ)
-			if ignoredPlayers[clickedPlayer] then
-				setIgnoredPlayer(clickedPlayer, false)
-				print("Đã gỡ bỏ qua, đưa " .. clickedPlayer.Name .. " trở lại danh sách Random.")
-			else
-				setIgnoredPlayer(clickedPlayer, true)
-				print("Đã bỏ qua hoàn toàn (Đỏ): " .. clickedPlayer.Name)
-			end
-		end
-	end
+            if ignoredPlayers[clickedPlayer] then
+                setIgnoredPlayer(clickedPlayer, false)
+                print("Đã gỡ bỏ qua, đưa " .. clickedPlayer.Name .. " trở lại danh sách Random.")
+            else
+                setIgnoredPlayer(clickedPlayer, true)
+                print("Đã bỏ qua hoàn toàn (Đỏ): " .. clickedPlayer.Name)
+            end
+        end
+    end
 end)
 
 local function charityTargets(bombName)
-	local targets = {}
-	for _, targetPlayer in ipairs(Players:GetPlayers()) do
-		if isTargetValid(targetPlayer, bombName) then
-			table.insert(targets, targetPlayer)
-		end
-	end
-	for i = #targets, 2, -1 do
-		local j = math.random(1, i)
-		targets[i], targets[j] = targets[j], targets[i]
-	end
-	return targets
+    local targets = {}
+    for _, targetPlayer in ipairs(Players:GetPlayers()) do
+        if isTargetValid(targetPlayer, bombName) then
+            table.insert(targets, targetPlayer)
+        end
+    end
+    for i = #targets, 2, -1 do
+        local j = math.random(1, i)
+        targets[i], targets[j] = targets[j], targets[i]
+    end
+    return targets
 end
 
 local function charityGetBomb(bombName, ignoredTools)
-	local c = character()
-	local backpack = player:FindFirstChild("Backpack")
-	local containers = {c, backpack}
-	for _, container in pairs(containers) do
-		if container then
-			for _, item in ipairs(container:GetChildren()) do
-				if item:IsA("Tool") and (bombName and item.Name == bombName
-					or not bombName and not ignoredTools[item.Name]) then
-					return item
-				end
-			end
-		end
-	end
-	return nil
+    local c = character()
+    local backpack = player:FindFirstChild("Backpack")
+    local containers = {c, backpack}
+    for _, container in pairs(containers) do
+        if container then
+            for _, item in ipairs(container:GetChildren()) do
+                if item:IsA("Tool") and (bombName and item.Name == bombName
+                    or not bombName and not ignoredTools[item.Name]) then
+                    return item
+                end
+            end
+        end
+    end
+    return nil
 end
 
 local function runCharityBomb()
-	local ignoredTools = {}
-	for _, container in ipairs({character(), player:FindFirstChild("Backpack")}) do
-		if container then
-			for _, item in ipairs(container:GetChildren()) do
-				if item:IsA("Tool") then ignoredTools[item.Name] = true end
-			end
-		end
-	end
+    local ignoredTools = {}
+    for _, container in ipairs({character(), player:FindFirstChild("Backpack")}) do
+        if container then
+            for _, item in ipairs(container:GetChildren()) do
+                if item:IsA("Tool") and item.Name ~= "Classic Timebomb" then
+                    ignoredTools[item.Name] = true
+                end
+            end
+        end
+    end
 
-	charityWasNoclip = noclip
-	setNoclip(true)
-	startFreecam()
+    charityWasNoclip = noclip
+    setNoclip(true)
+    startFreecam()
 
-	local bombName
-	local posToggle = false
+    -- Bật vòng lặp lấy bom liên tục bằng firetouchinterest (thay cho tele 2 chỗ)
+    _G.AutoBomb = true
+    task.spawn(function()
+        while _G.AutoBomb and charityActive do
+            local hrp = root()
+            local handle = getBombHandle()
 
-	local function findBombOrMove()
-		while charityActive do
-			local bomb = charityGetBomb(bombName, ignoredTools)
-			if bomb then return bomb end
-			if bombName and #charityTargets(bombName) == 0 then return nil end
-			local r = root()
-			if r then
-				r.AssemblyLinearVelocity = Vector3.zero
-				r.AssemblyAngularVelocity = Vector3.zero
-				r.CFrame = CFrame.new(posToggle and charityPos1 or charityPos2)
-				posToggle = not posToggle
-			end
-			task.wait(0.1)
-		end
-		return nil
-	end
+            if hrp and handle and firetouchinterest then
+                firetouchinterest(hrp, handle, 0)
+                task.wait(0.02)
+                firetouchinterest(hrp, handle, 1)
+            end
 
-	while charityActive do
-		if #charityTargets(bombName) == 0 then break end
-		local bomb = charityGetBomb(bombName, ignoredTools) or findBombOrMove()
-		if not charityActive or not bomb then break end
-		if not bombName then
-			bombName = bomb.Name
-			print("Đã nhận diện tên bom: " .. bombName)
-		end
+            task.wait(0.1) -- Lấy liên tục 10 lần mỗi giây
+        end
+    end)
 
-		local targetPlayer = nil
+    local bombName
 
-		-- Kiểm tra nếu có người chơi đang được click ưu tiên (Màu xanh) và người đó hợp lệ
-		if priorityTarget then
-			if isTargetValid(priorityTarget, bombName) then
-				targetPlayer = priorityTarget
-				print("Đang chuyền bom ƯU TIÊN cho: " .. targetPlayer.Name)
-			else
-				clearPriorityTarget()
-			end
-		end
+    local function findBomb()
+        while charityActive and _G.AutoBomb do
+            local bomb = charityGetBomb(bombName, ignoredTools)
+            if bomb then return bomb end
+            if bombName and #charityTargets(bombName) == 0 then return nil end
+            task.wait(0.05)
+        end
+        return nil
+    end
 
-		-- Nếu không có mục tiêu ưu tiên thì lấy ngẫu nhiên trong những người không bị bỏ qua
-		if not targetPlayer then
-			local targets = charityTargets(bombName)
-			if #targets == 0 then break end
-			targetPlayer = targets[1]
-			print("Đang chuyền bom cho: " .. targetPlayer.Name)
-		end
+    while charityActive do
+        if #charityTargets(bombName) == 0 then break end
+        local bomb = charityGetBomb(bombName, ignoredTools) or findBomb()
+        if not charityActive or not bomb then break end
+        if not bombName then
+            bombName = bomb.Name
+            print("Đã nhận diện tên bom: " .. bombName)
+        end
 
-		while charityActive and charityGetBomb(bombName, ignoredTools) == bomb do
-			-- 1. Nếu mục tiêu hiện tại vừa bị bạn click Chuột phải (đưa vào danh sách Đỏ) -> Bỏ ngang ngay lập tức
-			if ignoredPlayers[targetPlayer] then
-				break
-			end
+        local targetPlayer = nil
 
-			-- 2. Nếu bạn vừa click Chuột trái ưu tiên một người mới -> Đổi sang người ưu tiên ngay lập tức
-			if priorityTarget and priorityTarget ~= targetPlayer then
-				if isTargetValid(priorityTarget, bombName) then
-					break
-				else
-					clearPriorityTarget()
-				end
-			end
+        if priorityTarget then
+            if isTargetValid(priorityTarget, bombName) then
+                targetPlayer = priorityTarget
+                print("Đang chuyền bom ƯU TIÊN cho: " .. targetPlayer.Name)
+            else
+                clearPriorityTarget()
+            end
+        end
 
-			local myRoot = root()
-			local targetRoot = charityRoot(targetPlayer)
-			if targetPlayer.Parent ~= Players or not targetRoot or not myRoot
-				or not charityHealthy(targetPlayer) or charityHasBomb(targetPlayer, bombName) then
-				break
-			end
+        if not targetPlayer then
+            local targets = charityTargets(bombName)
+            if #targets == 0 then break end
+            targetPlayer = targets[1]
+            print("Đang chuyền bom cho: " .. targetPlayer.Name)
+        end
 
-			local c = character()
-			local h = c and c:FindFirstChildOfClass("Humanoid")
-			if h and bomb.Parent == player:FindFirstChild("Backpack") then
-				h:EquipTool(bomb)
-			end
-			myRoot.AssemblyLinearVelocity = Vector3.zero
-			myRoot.AssemblyAngularVelocity = Vector3.zero
-			myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, charityBehindDistance)
-			RunService.Heartbeat:Wait()
-		end
+        while charityActive and charityGetBomb(bombName, ignoredTools) == bomb do
+            if ignoredPlayers[targetPlayer] then
+                break
+            end
 
-		-- Sau khi tặng xong 1 trái cho người ưu tiên (hoặc người đó không còn hợp lệ), tự gỡ trạng thái ưu tiên
-		if targetPlayer == priorityTarget and (not isTargetValid(priorityTarget, bombName) or charityGetBomb(bombName, ignoredTools) ~= bomb) then
-			clearPriorityTarget()
-		end
+            if priorityTarget and priorityTarget ~= targetPlayer then
+                if isTargetValid(priorityTarget, bombName) then
+                    break
+                else
+                    clearPriorityTarget()
+                end
+            end
 
-		task.wait(0.05)
-	end
+            local myRoot = root()
+            local targetRoot = charityRoot(targetPlayer)
+            if targetPlayer.Parent ~= Players or not targetRoot or not myRoot
+                or not charityHealthy(targetPlayer) or charityHasBomb(targetPlayer, bombName) then
+                break
+            end
 
-	local completed = charityActive
-	charityActive = false
-	clearAllSelections()
-	if setCharityVisual then setCharityVisual(false) end
-	setNoclip(charityWasNoclip)
+            local c = character()
+            local h = c and c:FindFirstChildOfClass("Humanoid")
+            if h and bomb.Parent == player:FindFirstChild("Backpack") then
+                h:EquipTool(bomb)
+            end
+            myRoot.AssemblyLinearVelocity = Vector3.zero
+            myRoot.AssemblyAngularVelocity = Vector3.zero
+            myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, charityBehindDistance)
+            RunService.Heartbeat:Wait()
+        end
 
-	if completed then
-		local finalRoot = root()
-		if finalRoot then
-			finalRoot.AssemblyLinearVelocity = Vector3.zero
-			finalRoot.CFrame = CFrame.new(charityPos1)
-		end
-		print("Đã hoàn tất!")
-	else
-		print("Đã tắt Từ thiện bom.")
-	end
+        if targetPlayer == priorityTarget and (not isTargetValid(priorityTarget, bombName) or charityGetBomb(bombName, ignoredTools) ~= bomb) then
+            clearPriorityTarget()
+        end
 
-	stopFreecam()
+        task.wait(0.05)
+    end
+
+    local completed = charityActive
+    charityActive = false
+    _G.AutoBomb = false
+    clearAllSelections()
+    if setCharityVisual then setCharityVisual(false) end
+    setNoclip(charityWasNoclip)
+
+    if completed then
+        local finalRoot = root()
+        if finalRoot then
+            finalRoot.AssemblyLinearVelocity = Vector3.zero
+        end
+        print("Đã hoàn tất!")
+    else
+        print("Đã tắt Từ thiện bom.")
+    end
+
+    stopFreecam()
+end
+
+local function setCharityEnabled(enabled)
+    if enabled == charityActive then return end
+    charityActive = enabled
+    _G.AutoBomb = enabled
+
+    if setCharityVisual then setCharityVisual(enabled) end
+
+    if enabled then
+        task.spawn(runCharityBomb)
+    else
+        clearAllSelections()
+        stopFreecam()
+    end
 end
 
 setCharityVisual = CreateCheckbox("Từ thiện bom", 1, function()
-	if charityActive then
-		charityActive = false
-		clearAllSelections()
-		stopFreecam()
-		if setCharityVisual then setCharityVisual(false) end
-		return
-	end
-	charityActive = true
-	if setCharityVisual then setCharityVisual(true) end
-	task.spawn(runCharityBomb)
+    setCharityEnabled(not charityActive)
+end)
+
+-- ================= LOGIC ATOMIC LAZER (NÚT SỐ 2 - GOM SERVER & HOOK ĐẠN) =================
+local isGathering = false
+local setAtomicVisual
+local gatherConnection = nil
+local currentGatherPos = nil
+local originalStates = {}
+local GATHER_OFFSET = 12 -- Khoảng cách gom an toàn trước mặt (12 studs)
+
+local sharedEnv = (getgenv and getgenv()) or _G
+sharedEnv.LonyAtomicGathering = false
+sharedEnv.LonyCurrentGatherPos = nil
+
+local function maximizeNetworkRange()
+    pcall(function()
+        if typeof(sethiddenproperty) == "function" then
+            sethiddenproperty(player, "SimulationRadius", math.huge)
+            sethiddenproperty(player, "MaxSimulationRadius", math.huge)
+        end
+    end)
+end
+
+-- Kiểm tra bảo vệ tuyệt đối bản thân (0% tự sát)
+local function isSelf(obj)
+    if not obj then return true end
+    local myChar = player.Character
+    if myChar and (obj == myChar or obj:IsDescendantOf(myChar)) then
+        return true
+    end
+    if obj.Name == player.Name or obj.Name == player.DisplayName then
+        return true
+    end
+    if Players:GetPlayerFromCharacter(obj) == player then
+        return true
+    end
+    return false
+end
+
+-- Lấy danh sách toàn bộ đối thủ còn sống trên Server
+local function getAllTargetsMaxRange()
+    local list = {}
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= player and plr.Character and not isSelf(plr.Character) then
+            local char = plr.Character
+            local targetRoot = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+            local hum = char:FindFirstChildOfClass("Humanoid")
+
+            if targetRoot and hum and hum.Health > 0 and not char:FindFirstChildOfClass("ForceField") then
+                table.insert(list, {
+                    Character = char,
+                    Root = targetRoot
+                })
+            end
+        end
+    end
+    return list
+end
+
+-- 1. TỰ ĐỘNG BÁO CHẠM ĐẠN LÊN SERVER KHI ĐANG BẬT CHẾ ĐỘ GOM
+if sharedEnv.LonyChildAddedConn then
+    sharedEnv.LonyChildAddedConn:Disconnect()
+end
+sharedEnv.LonyChildAddedConn = Workspace.ChildAdded:Connect(function(child)
+    if isGathering and child.Name == "Effect" and child:IsA("BasePart") then
+        task.defer(function()
+            maximizeNetworkRange()
+            local targets = getAllTargetsMaxRange()
+            if #targets == 0 then return end
+
+            child.CanCollide = false
+
+            -- Tắt va chạm giữa viên đạn và bản thân
+            local myChar = player.Character
+            if myChar then
+                for _, myPart in ipairs(myChar:GetDescendants()) do
+                    if myPart:IsA("BasePart") then
+                        pcall(function()
+                            local noCol = Instance.new("NoCollisionConstraint")
+                            noCol.Part0 = child
+                            noCol.Part1 = myPart
+                            noCol.Parent = child
+                        end)
+                    end
+                end
+            end
+
+            -- Báo chạm (firetouchinterest) vào toàn bộ đối thủ đang bị gom
+            if typeof(firetouchinterest) == "function" then
+                for _, data in ipairs(targets) do
+                    if not isSelf(data.Character) then
+                        for _, part in ipairs(data.Character:GetChildren()) do
+                            if part:IsA("BasePart") and not isSelf(part) then
+                                task.spawn(function()
+                                    firetouchinterest(child, part, 0)
+                                    firetouchinterest(child, part, 1)
+                                end)
+                            end
+                        end
+                    end
+                end
+            end
+
+            local startTime = os.clock()
+            while isGathering and child and child.Parent and (os.clock() - startTime < 0.35) do
+                for _, data in ipairs(targets) do
+                    if data.Root and data.Root.Parent and not isSelf(data.Root) then
+                        if typeof(firetouchinterest) == "function" then
+                            firetouchinterest(child, data.Root, 0)
+                            firetouchinterest(child, data.Root, 1)
+                        end
+                    end
+                end
+                RunService.Heartbeat:Wait()
+            end
+        end)
+    end
+end)
+
+-- 2. HOOK SÚNG: Khi đang bật gom, bắn đi đâu đạn cũng tự găm thẳng vào cục gom (chỉ hook 1 lần tránh lỗi đè)
+if typeof(hookmetamethod) == "function" and not sharedEnv.LonyAtomicHooked then
+    sharedEnv.LonyAtomicHooked = true
+    local oldNamecall
+    oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod()
+        local args = {...}
+
+        if not checkcaller() and sharedEnv.LonyAtomicGathering and sharedEnv.LonyCurrentGatherPos and self.Name == "ServerControl" and (method == "InvokeServer" or method == "FireServer") then
+            if args[1] == "Click" and args[2] == true then
+                args[3] = sharedEnv.LonyCurrentGatherPos
+                return oldNamecall(self, unpack(args))
+            end
+        end
+        return oldNamecall(self, ...)
+    end)
+end
+
+-- 3. HÀM TẮT GOM (Trả mọi người về trạng thái bình thường)
+local function stopGathering()
+    if not isGathering then return end
+    isGathering = false
+    sharedEnv.LonyAtomicGathering = false
+    if setAtomicVisual then setAtomicVisual(false) end
+
+    if gatherConnection then
+        gatherConnection:Disconnect()
+        gatherConnection = nil
+    end
+
+    for targetRoot, state in pairs(originalStates) do
+        if targetRoot and targetRoot.Parent then
+            pcall(function()
+                targetRoot.Size = state.Size
+                targetRoot.Transparency = state.Transparency
+                targetRoot.CanCollide = state.CanCollide
+                local hum = targetRoot.Parent:FindFirstChildOfClass("Humanoid")
+                if hum and hum.Health > 0 then
+                    targetRoot.CFrame = state.CFrame
+                end
+            end)
+        end
+    end
+
+    table.clear(originalStates)
+    currentGatherPos = nil
+    sharedEnv.LonyCurrentGatherPos = nil
+    notify("ĐÃ TẮT GOM [E]", "Đã thả toàn bộ người chơi ra!")
+end
+
+-- 4. HÀM BẬT GOM (Gom liên tục toàn server về trước mặt)
+local function startGathering()
+    if isGathering then return end
+    local myChar = player.Character
+    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if not myChar or not myRoot then
+        notify("LỖI", "Chưa tìm thấy nhân vật để gom!")
+        if setAtomicVisual then setAtomicVisual(false) end
+        return
+    end
+
+    isGathering = true
+    sharedEnv.LonyAtomicGathering = true
+    if setAtomicVisual then setAtomicVisual(true) end
+    maximizeNetworkRange()
+    table.clear(originalStates)
+
+    notify("ĐANG GOM SERVER [E]", "Đang giữ toàn bộ Server trước mặt! Bấm [E] hoặc tắt trên Menu để thả.")
+
+    gatherConnection = RunService.RenderStepped:Connect(function()
+        if not isGathering then return end
+
+        local char = player.Character
+        local r = char and char:FindFirstChild("HumanoidRootPart")
+        if not char or not r then return end
+
+        -- Điểm gom luôn nằm trước mặt nhân vật 12 studs
+        currentGatherPos = (r.CFrame * CFrame.new(0, 0, -GATHER_OFFSET)).Position
+        sharedEnv.LonyCurrentGatherPos = currentGatherPos
+        local gatherCFrame = CFrame.new(currentGatherPos)
+
+        local targets = getAllTargetsMaxRange()
+        for _, data in ipairs(targets) do
+            local targetRoot = data.Root
+            if targetRoot and targetRoot.Parent and not isSelf(targetRoot) then
+                if not originalStates[targetRoot] then
+                    originalStates[targetRoot] = {
+                        CFrame = targetRoot.CFrame,
+                        Size = targetRoot.Size,
+                        Transparency = targetRoot.Transparency,
+                        CanCollide = targetRoot.CanCollide
+                    }
+                end
+
+                targetRoot.CanCollide = false
+                targetRoot.Size = Vector3.new(6, 6, 6)
+                targetRoot.Transparency = 0.8
+                targetRoot.AssemblyLinearVelocity = Vector3.zero
+                targetRoot.AssemblyAngularVelocity = Vector3.zero
+                targetRoot.CFrame = gatherCFrame
+            end
+        end
+    end)
+end
+
+local function setAtomicEnabled(enabled)
+    if enabled then
+        startGathering()
+    else
+        stopGathering()
+    end
+end
+
+-- Gắn vào Checkbox số 2 trên giao diện Lony 1.0
+setAtomicVisual = CreateCheckbox("Atomic lazer", 2, function()
+    setAtomicEnabled(not isGathering)
+end)
+
+-- 5. BẤM PHÍM E ĐỂ BẬT / TẮT GOM (Đồng bộ trực tiếp với nút Atomic lazer trên Menu)
+if sharedEnv.LonyKeyEConn then
+    sharedEnv.LonyKeyEConn:Disconnect()
+end
+sharedEnv.LonyKeyEConn = UIS.InputBegan:Connect(function(input, gameProcessed)
+    -- Không kích hoạt phím E nếu đang gõ chat hoặc đang dùng Freecam (vì E là nút bay lên của Freecam)
+    if not gameProcessed and not freecamActive and input.KeyCode == Enum.KeyCode.E then
+        setAtomicEnabled(not isGathering)
+    end
 end)
 
 player.CharacterAdded:Connect(function()
-	table.clear(savedCollisions)
-	if not charityActive then
-		setNoclip(false)
-		stopFreecam()
-	end
+    table.clear(savedCollisions)
+    if not charityActive then
+        setNoclip(false)
+        stopFreecam()
+    end
 end)
 
 local isMenuOpen = true
 FloatBtn.MouseButton1Click:Connect(function()
-	isMenuOpen = not isMenuOpen
-	if isMenuOpen then
-		MainFrame.Visible = true
-		MenuBlur.Size = 12
-		TweenService:Create(MenuBlur, TweenInfo.new(0.3), {Size = 0}):Play()
-		TweenService:Create(MainScale, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
-		TweenService:Create(FloatStroke, TweenInfo.new(0.2), {Color = Colors.MintNeon}):Play()
-		TweenService:Create(DoveIcon, TweenInfo.new(0.2), {ImageColor3 = Colors.MintNeon}):Play()
-	else
-		TweenService:Create(MainScale, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Scale = 0}):Play()
-		TweenService:Create(FloatStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(100, 120, 115)}):Play()
-		TweenService:Create(DoveIcon, TweenInfo.new(0.2), {ImageColor3 = Color3.fromRGB(130, 150, 145)}):Play()
-		task.delay(0.16, function()
-			if not isMenuOpen then MainFrame.Visible = false end
-		end)
-	end
+    isMenuOpen = not isMenuOpen
+    if isMenuOpen then
+        MainFrame.Visible = true
+        MenuBlur.Size = 12
+        TweenService:Create(MenuBlur, TweenInfo.new(0.3), {Size = 0}):Play()
+        TweenService:Create(MainScale, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
+        TweenService:Create(FloatStroke, TweenInfo.new(0.2), {Color = Colors.MintNeon}):Play()
+        TweenService:Create(DoveIcon, TweenInfo.new(0.2), {ImageColor3 = Colors.MintNeon}):Play()
+    else
+        TweenService:Create(MainScale, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Scale = 0}):Play()
+        TweenService:Create(FloatStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(100, 120, 115)}):Play()
+        TweenService:Create(DoveIcon, TweenInfo.new(0.2), {ImageColor3 = Color3.fromRGB(130, 150, 145)}):Play()
+        task.delay(0.16, function()
+            if not isMenuOpen then MainFrame.Visible = false end
+        end)
+    end
 end)
+
+notify("LONY 1.0 SẴN SÀNG", "Bấm [E] hoặc tích chọn 'Atomic lazer' trên Menu để gom Server!")
